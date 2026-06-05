@@ -1,8 +1,4 @@
 // server/actions/submit-application.ts
-//
-// This is a Server Action: it runs ONLY on the server, never in the browser.
-// The "use server" line is what makes that happen. The client calls it like a
-// normal async function, and Next.js handles sending the data to the server.
 
 "use server";
 
@@ -13,8 +9,6 @@ import { applicants } from "@/server/db/schema";
 import { applicantSchema } from "@/server/validation/applicant";
 import { verifyTurnstileToken } from "@/server/turnstile";
 
-// A real human needs at least this many seconds to fill the form.
-// Anything faster is almost certainly a bot.
 const MIN_FILL_SECONDS = 3;
 
 type SubmitResult =
@@ -23,8 +17,6 @@ type SubmitResult =
 
 function generateReferenceNumber(): string {
   const year = new Date().getFullYear();
-  // Short random suffix. The UNIQUE constraint on the column guards the
-  // (very rare) case where two random codes collide.
   const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
   return `MBUGM-${year}-${suffix}`;
 }
@@ -37,19 +29,16 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
   }
   const data = parsed.data;
 
-  // 2. CHEAP ANTI-BOT checks (no network calls), so obvious bots get rejected first.
-  //    a) Honeypot: a hidden field real users can't see. If it's filled, it's a bot.
+  // 2. CHEAP ANTI-BOT checks (no network calls).
   if (data.website && data.website.trim().length > 0) {
     return { ok: false, error: "Pengiriman ditolak." };
   }
-  //    b) Time-trap: submitted impossibly fast = automated.
   const secondsToFill = (Date.now() - data.formLoadedAt) / 1000;
   if (secondsToFill < MIN_FILL_SECONDS) {
     return { ok: false, error: "Pengiriman ditolak." };
   }
 
-  // 3. CAPTCHA: verify the Turnstile token with Cloudflare. We also grab the
-  //    visitor's IP from the request headers (set by Vercel in production).
+  // 3. CAPTCHA: verify the Turnstile token with Cloudflare; capture IP.
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
 
@@ -58,9 +47,7 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     return { ok: false, error: "Verifikasi CAPTCHA gagal. Silakan coba lagi." };
   }
 
-  // 4. IDEMPOTENCY: if this exact submission was already saved (e.g. the user
-  //    double-clicked or the network retried), return the existing record
-  //    instead of creating a second row.
+  // 4. IDEMPOTENCY: same submission token = a retry, not a new applicant.
   const existingByToken = await db.query.applicants.findFirst({
     where: eq(applicants.submissionToken, data.submissionToken),
   });
@@ -72,7 +59,7 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     };
   }
 
-  // 5. FRIENDLY DUPLICATE CHECK on NIM (the common case — gives a nice message).
+  // 5. FRIENDLY DUPLICATE CHECK on NIM.
   const existingByNim = await db.query.applicants.findFirst({
     where: eq(applicants.nim, data.nim),
   });
@@ -80,9 +67,7 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     return { ok: false, error: "NIM ini sudah terdaftar." };
   }
 
-  // 6. INSERT. The checks above are for nice messages; the UNIQUE constraints
-  //    in the database are the real guarantee, and they catch the rare race
-  //    where two requests pass the checks at the same instant.
+  // 6. INSERT. UNIQUE constraints in the DB are the real guarantee.
   try {
     const [row] = await db
       .insert(applicants)
@@ -90,18 +75,64 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
         submissionToken: data.submissionToken,
         referenceNumber: generateReferenceNumber(),
         ip: ip ?? null,
+
+        // Data diri
         nim: data.nim,
         namaLengkap: data.namaLengkap,
-        email: data.email,
-        noTelp: data.noTelp,
+        namaPanggilan: data.namaPanggilan ?? null,
+        tempatLahir: data.tempatLahir ?? null,
+        tanggalLahir: data.tanggalLahir ?? null,
         jenisKelamin: data.jenisKelamin,
         agama: data.agama,
+        golonganDarah: data.golonganDarah ?? null,
+        tinggiBadanCm: data.tinggiBadanCm ?? null,
+        beratBadanKg: data.beratBadanKg ?? null,
+
+        // Kesehatan
+        riwayatPenyakit: data.riwayatPenyakit ?? null,
+        alergi: data.alergi ?? null,
+        hobi: data.hobi ?? null,
+
+        // Akademik
+        jenjangStudi: data.jenjangStudi ?? null,
+        fakultas: data.fakultas ?? null,
+        prodi: data.prodi ?? null,
+        asalSma: data.asalSma ?? null,
+
+        // Kontak & alamat
+        noTelp: data.noTelp,
+        email: data.email,
+        alamatAsal: data.alamatAsal ?? null,
+        jenisTempat: data.jenisTempat ?? null,
+        alamatJogja: data.alamatJogja ?? null,
+
+        // Orang tua / wali
+        namaOrtu: data.namaOrtu ?? null,
+        noOrtu: data.noOrtu ?? null,
+        alamatOrtu: data.alamatOrtu ?? null,
+
+        // Media sosial
+        idLine: data.idLine ?? null,
+        idInstagram: data.idInstagram ?? null,
+        idFacebook: data.idFacebook ?? null,
+        idTwitter: data.idTwitter ?? null,
+
+        // Marching band
+        bidangTari: data.bidangTari ?? null,
+        bidangMusik: data.bidangMusik ?? null,
+        organisasi: data.organisasi ?? null,
+        pernahMb: data.pernahMb,
+        unitSebelumnya: data.unitSebelumnya ?? null,
+        section: data.section ?? null,
+        kemampuanAlat: data.kemampuanAlat ?? null,
+
+        // Penempatan
+        sessionId: data.sessionId ?? null,
       })
       .returning({ referenceNumber: applicants.referenceNumber });
 
     return { ok: true, referenceNumber: row.referenceNumber };
   } catch (err) {
-    // Postgres reports a unique-constraint violation with error code "23505".
     const e = err as { code?: string; detail?: string };
     if (e.code === "23505") {
       const detail = e.detail ?? "";
@@ -116,10 +147,8 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
           return { ok: true, referenceNumber: saved.referenceNumber, duplicate: true };
         }
       }
-      // reference_number collision (extremely rare) — caller can just retry.
       return { ok: false, error: "Terjadi kesalahan, silakan coba lagi." };
     }
-
     console.error("submitApplication failed:", err);
     return { ok: false, error: "Terjadi kesalahan di server. Silakan coba lagi." };
   }
