@@ -12,12 +12,14 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "^1.5.2",
     "@neondatabase/serverless": "^1.1.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.7",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
