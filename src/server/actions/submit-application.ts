@@ -1,3 +1,5 @@
+// server/actions/submit-application.ts
+//
 // This is a Server Action: it runs ONLY on the server, never in the browser.
 // The "use server" line is what makes that happen. The client calls it like a
 // normal async function, and Next.js handles sending the data to the server.
@@ -5,9 +7,11 @@
 "use server";
 
 import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
 import { db } from "@/server/db";
 import { applicants } from "@/server/db/schema";
 import { applicantSchema } from "@/server/validation/applicant";
+import { verifyTurnstileToken } from "@/server/turnstile";
 
 // A real human needs at least this many seconds to fill the form.
 // Anything faster is almost certainly a bot.
@@ -33,7 +37,7 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
   }
   const data = parsed.data;
 
-  // 2. ANTI-BOT checks.
+  // 2. CHEAP ANTI-BOT checks (no network calls), so obvious bots get rejected first.
   //    a) Honeypot: a hidden field real users can't see. If it's filled, it's a bot.
   if (data.website && data.website.trim().length > 0) {
     return { ok: false, error: "Pengiriman ditolak." };
@@ -44,7 +48,17 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     return { ok: false, error: "Pengiriman ditolak." };
   }
 
-  // 3. IDEMPOTENCY: if this exact submission was already saved (e.g. the user
+  // 3. CAPTCHA: verify the Turnstile token with Cloudflare. We also grab the
+  //    visitor's IP from the request headers (set by Vercel in production).
+  const h = await headers();
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
+
+  const captchaOk = await verifyTurnstileToken(data.turnstileToken, ip);
+  if (!captchaOk) {
+    return { ok: false, error: "Verifikasi CAPTCHA gagal. Silakan coba lagi." };
+  }
+
+  // 4. IDEMPOTENCY: if this exact submission was already saved (e.g. the user
   //    double-clicked or the network retried), return the existing record
   //    instead of creating a second row.
   const existingByToken = await db.query.applicants.findFirst({
@@ -58,7 +72,7 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     };
   }
 
-  // 4. FRIENDLY DUPLICATE CHECK on NIM (the common case — gives a nice message).
+  // 5. FRIENDLY DUPLICATE CHECK on NIM (the common case — gives a nice message).
   const existingByNim = await db.query.applicants.findFirst({
     where: eq(applicants.nim, data.nim),
   });
@@ -66,7 +80,7 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     return { ok: false, error: "NIM ini sudah terdaftar." };
   }
 
-  // 5. INSERT. The checks above are for nice messages; the UNIQUE constraints
+  // 6. INSERT. The checks above are for nice messages; the UNIQUE constraints
   //    in the database are the real guarantee, and they catch the rare race
   //    where two requests pass the checks at the same instant.
   try {
@@ -75,6 +89,7 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
       .values({
         submissionToken: data.submissionToken,
         referenceNumber: generateReferenceNumber(),
+        ip: ip ?? null,
         nim: data.nim,
         namaLengkap: data.namaLengkap,
         email: data.email,

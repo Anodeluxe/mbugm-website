@@ -1,12 +1,14 @@
 // components/registration-form.tsx
 //
 // A minimal client-side form to prove the pipeline. It collects a few fields,
-// adds the hidden anti-bot / idempotency values, and calls the server action.
+// adds the hidden anti-bot / idempotency values plus the Turnstile CAPTCHA
+// token, and calls the server action.
 // Styling is intentionally bare — we'll make it pretty (and multi-step) later.
 
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { submitApplication } from "@/server/actions/submit-application";
 import { AGAMA_OPTIONS, JENIS_KELAMIN_OPTIONS } from "@/lib/constants";
 
@@ -15,6 +17,10 @@ export function RegistrationForm() {
   // submissionToken makes retries idempotent; formLoadedAt powers the time-trap.
   const [submissionToken] = useState(() => crypto.randomUUID());
   const [formLoadedAt] = useState(() => Date.now());
+
+  // The CAPTCHA token Cloudflare gives us once the widget is solved.
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   const [values, setValues] = useState({
     nim: "",
@@ -39,18 +45,26 @@ export function RegistrationForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!turnstileToken) {
+      setStatus({ state: "error", message: "Mohon selesaikan verifikasi CAPTCHA." });
+      return;
+    }
     setStatus({ state: "submitting" });
 
     const result = await submitApplication({
       ...values,
       submissionToken,
       formLoadedAt,
+      turnstileToken,
     });
 
     if (result.ok) {
       setStatus({ state: "success", referenceNumber: result.referenceNumber });
     } else {
       setStatus({ state: "error", message: result.error });
+      // A Turnstile token is single-use. Reset the widget so a retry gets a fresh one.
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
     }
   }
 
@@ -153,11 +167,24 @@ export function RegistrationForm() {
         </select>
       </label>
 
+      {/* The Turnstile widget. It loads Cloudflare's script automatically and
+          calls onSuccess with a token once solved. */}
+      <Turnstile
+        ref={turnstileRef}
+        siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+        onSuccess={(token) => setTurnstileToken(token)}
+        onError={() => setTurnstileToken("")}
+        onExpire={() => setTurnstileToken("")}
+      />
+
       {status.state === "error" && (
         <p style={{ color: "crimson" }}>{status.message}</p>
       )}
 
-      <button type="submit" disabled={status.state === "submitting"}>
+      <button
+        type="submit"
+        disabled={status.state === "submitting" || !turnstileToken}
+      >
         {status.state === "submitting" ? "Mengirim..." : "Daftar"}
       </button>
     </form>

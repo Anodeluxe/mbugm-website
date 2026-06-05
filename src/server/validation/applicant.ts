@@ -11,7 +11,8 @@ import { z } from "zod";
 import { AGAMA_OPTIONS, JENIS_KELAMIN_OPTIONS } from "@/lib/constants";
 
 export const applicantSchema = z.object({
-  // --- hidden fields: idempotency + anti-bot (the user never sees these) ---
+  // --- hidden fields: CAPTCHA + idempotency + anti-bot (user never sees these) ---
+  turnstileToken: z.string().min(1, "Verifikasi CAPTCHA diperlukan"), // from Cloudflare Turnstile
   submissionToken: z.string().uuid(), // unique per form load; makes retries safe
   formLoadedAt: z.coerce.number(), // ms timestamp of when the form loaded
   website: z.string().optional(), // honeypot: real users leave this empty
