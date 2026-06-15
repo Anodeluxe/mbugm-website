@@ -15,7 +15,6 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
-import type { Style } from "@react-pdf/types";
 import type { Applicant } from "@/server/db/schema";
 
 const C = {
@@ -31,7 +30,7 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderColor: C.border, borderRadius: 8, padding: 14 },
 
   header: { flexDirection: "row", marginBottom: 8 },
-  logoSlot: { width: 104, height: 92, borderRadius: 6, marginRight: 14 },
+  logoSlot: { width: 104, height: 92, borderRadius: 6, marginRight: 14, objectFit: "cover" },
   headerRight: { flex: 1, justifyContent: "center" },
   title: {
     fontSize: 20,
@@ -48,7 +47,7 @@ const styles = StyleSheet.create({
   identityText: { flex: 1, textAlign: "center" },
   name: { fontSize: 13, color: C.value },
   nim: { fontSize: 13, color: C.value, marginTop: 2 },
-  pasFotoSlot: { width: 52, height: 68 },
+  pasFotoSlot: { width: 52, height: 68, objectFit: "cover" },
 
   body: { flexDirection: "row" },
   col: { flex: 1 },
@@ -78,7 +77,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  ktmSlot: { width: 110, height: 70, marginVertical: 4 },
+  ktmSlot: { width: 110, height: 70, marginVertical: 4, objectFit: "cover" },
 });
 
 function disp(value?: string | number | null): string {
@@ -99,7 +98,7 @@ function ImageSlot({
   label,
 }: {
   src?: string;
-  style: Style;
+  style: object;
   label: string;
 }) {
   if (src) return <Image src={src} style={style} />;

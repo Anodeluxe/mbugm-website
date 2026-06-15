@@ -9,8 +9,9 @@ import { applicants } from "@/server/db/schema";
 import { applicantSchema } from "@/server/validation/applicant";
 import { verifyTurnstileToken } from "@/server/turnstile";
 import { syncApplicantToGoogle } from "@/server/google/sync";
-
+import { processImage } from "@/server/images";
 const MIN_FILL_SECONDS = 3;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB ceiling (client compresses to ~1MB)
 
 type SubmitResult =
   | { ok: true; referenceNumber: string; duplicate?: boolean }
@@ -22,15 +23,26 @@ function generateReferenceNumber(): string {
   return `MBUGM-${year}-${suffix}`;
 }
 
-export async function submitApplication(raw: unknown): Promise<SubmitResult> {
-  // 1. VALIDATE on the server.
+function isUploadedFile(v: FormDataEntryValue | null): v is File {
+  return typeof v === "object" && v !== null && "arrayBuffer" in v && (v as File).size > 0;
+}
+
+export async function submitApplication(formData: FormData): Promise<SubmitResult> {
+  // 0. Split the text fields from the file fields.
+  const raw: Record<string, FormDataEntryValue> = {};
+  for (const [k, v] of formData.entries()) {
+    if (k === "pasFoto" || k === "ktm") continue;
+    raw[k] = v;
+  }
+
+  // 1. VALIDATE the text fields on the server.
   const parsed = applicantSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: "Data tidak valid. Periksa kembali isian Anda." };
   }
   const data = parsed.data;
 
-  // 2. CHEAP ANTI-BOT checks (no network calls).
+  // 2. CHEAP ANTI-BOT checks.
   if (data.website && data.website.trim().length > 0) {
     return { ok: false, error: "Pengiriman ditolak." };
   }
@@ -39,7 +51,7 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     return { ok: false, error: "Pengiriman ditolak." };
   }
 
-  // 3. CAPTCHA verification + capture IP.
+  // 3. CAPTCHA + IP.
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
   const captchaOk = await verifyTurnstileToken(data.turnstileToken, ip);
@@ -47,19 +59,35 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     return { ok: false, error: "Verifikasi CAPTCHA gagal. Silakan coba lagi." };
   }
 
-  // 4. IDEMPOTENCY.
+  // 4. FILES: required, must be images, must be within the size ceiling.
+  const pasFotoFile = formData.get("pasFoto");
+  const ktmFile = formData.get("ktm");
+  if (!isUploadedFile(pasFotoFile)) return { ok: false, error: "Pas foto wajib diunggah." };
+  if (!isUploadedFile(ktmFile)) return { ok: false, error: "Foto KTM wajib diunggah." };
+  for (const f of [pasFotoFile, ktmFile]) {
+    if (f.size > MAX_IMAGE_BYTES) return { ok: false, error: "Ukuran gambar terlalu besar." };
+    if (!f.type.startsWith("image/")) return { ok: false, error: "File harus berupa gambar." };
+  }
+
+  // Re-encode/sanitize. If a "file" isn't a real image, sharp throws here.
+  let pasFotoBuf: Buffer;
+  let ktmBuf: Buffer;
+  try {
+    pasFotoBuf = await processImage(Buffer.from(await pasFotoFile.arrayBuffer()));
+    ktmBuf = await processImage(Buffer.from(await ktmFile.arrayBuffer()));
+  } catch {
+    return { ok: false, error: "Gambar tidak dapat diproses. Pastikan file berupa foto." };
+  }
+
+  // 5. IDEMPOTENCY.
   const existingByToken = await db.query.applicants.findFirst({
     where: eq(applicants.submissionToken, data.submissionToken),
   });
   if (existingByToken) {
-    return {
-      ok: true,
-      referenceNumber: existingByToken.referenceNumber,
-      duplicate: true,
-    };
+    return { ok: true, referenceNumber: existingByToken.referenceNumber, duplicate: true };
   }
 
-  // 5. FRIENDLY DUPLICATE CHECK on NIM.
+  // 6. FRIENDLY DUPLICATE CHECK on NIM.
   const existingByNim = await db.query.applicants.findFirst({
     where: eq(applicants.nim, data.nim),
   });
@@ -67,7 +95,7 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     return { ok: false, error: "NIM ini sudah terdaftar." };
   }
 
-  // 6. INSERT. We return the FULL row so we can hand it to the Google sync.
+  // 7. INSERT (full row returned for the sync).
   let inserted;
   try {
     const [row] = await db
@@ -120,16 +148,12 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     const e = err as { code?: string; detail?: string };
     if (e.code === "23505") {
       const detail = e.detail ?? "";
-      if (detail.includes("nim")) {
-        return { ok: false, error: "NIM ini sudah terdaftar." };
-      }
+      if (detail.includes("nim")) return { ok: false, error: "NIM ini sudah terdaftar." };
       if (detail.includes("submission_token")) {
         const saved = await db.query.applicants.findFirst({
           where: eq(applicants.submissionToken, data.submissionToken),
         });
-        if (saved) {
-          return { ok: true, referenceNumber: saved.referenceNumber, duplicate: true };
-        }
+        if (saved) return { ok: true, referenceNumber: saved.referenceNumber, duplicate: true };
       }
       return { ok: false, error: "Terjadi kesalahan, silakan coba lagi." };
     }
@@ -137,11 +161,11 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     return { ok: false, error: "Terjadi kesalahan di server. Silakan coba lagi." };
   }
 
-  // 7. SIDE EFFECTS (best-effort). The registration is already saved, so a
-  //    Google outage must NOT fail it — if this throws, the sync flags stay
-  //    false and the admin "resync" button fixes it later.
+  // 8. SIDE EFFECTS (best-effort). Pass the processed photo buffers so they
+  //    upload to Drive and embed into the PDF. A failure here doesn't fail the
+  //    registration — the resync button mops it up.
   try {
-    await syncApplicantToGoogle(inserted);
+    await syncApplicantToGoogle(inserted, { pasFoto: pasFotoBuf, ktm: ktmBuf });
   } catch (e) {
     console.error("Google sync failed (will need resync):", e);
   }

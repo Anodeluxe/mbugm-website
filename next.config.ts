@@ -1,10 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // @react-pdf/renderer relies on Node.js APIs and breaks when Next.js tries to
-  // bundle it (the infamous "X is not a constructor" error). This opts it out
-  // of bundling so it's loaded natively at runtime. THIS LINE IS REQUIRED.
-  serverExternalPackages: ["@react-pdf/renderer"],
+  // Native/Node packages that must NOT be bundled by Next.
+  serverExternalPackages: ["@react-pdf/renderer", "sharp"],
+
+  experimental: {
+    // Uploaded photos make the form submission larger than the 1MB default.
+    // We compress on the client to ~1MB each, so 8mb is plenty of headroom.
+    serverActions: { bodySizeLimit: "8mb" },
+  },
 };
 
 export default nextConfig;

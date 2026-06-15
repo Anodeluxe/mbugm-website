@@ -1,12 +1,13 @@
 // components/registration-form.tsx
 //
-// Full registration form, grouped into sections. Still intentionally plain —
-// the visual design pass comes later. Every value is held as a string and the
-// server's Zod schema coerces/validates it.
+// Full registration form with photo uploads. Photos are compressed in the
+// browser (to stay under platform upload limits), then everything is sent as
+// one FormData to the server action. Still plain styling — design pass later.
 
 "use client";
 
 import { useRef, useState } from "react";
+import imageCompression from "browser-image-compression";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { submitApplication } from "@/server/actions/submit-application";
 import {
@@ -20,47 +21,18 @@ import {
 type SessionOption = { id: number; dayLabel: string; sessionNo: number };
 
 const INITIAL = {
-  nim: "",
-  namaLengkap: "",
-  namaPanggilan: "",
-  tempatLahir: "",
-  tanggalLahir: "",
-  jenisKelamin: "",
-  agama: "",
-  golonganDarah: "",
-  tinggiBadanCm: "",
-  beratBadanKg: "",
-  riwayatPenyakit: "",
-  alergi: "",
-  hobi: "",
-  jenjangStudi: "",
-  fakultas: "",
-  prodi: "",
-  asalSma: "",
-  noTelp: "",
-  email: "",
-  alamatAsal: "",
-  jenisTempat: "",
-  alamatJogja: "",
-  namaOrtu: "",
-  noOrtu: "",
-  alamatOrtu: "",
-  idLine: "",
-  idInstagram: "",
-  idFacebook: "",
-  idTwitter: "",
-  bidangTari: "",
-  bidangMusik: "",
-  organisasi: "",
-  pernahMb: "false",
-  unitSebelumnya: "",
-  section: "",
-  kemampuanAlat: "",
-  sessionId: "",
-  website: "", // honeypot
+  nim: "", namaLengkap: "", namaPanggilan: "", tempatLahir: "", tanggalLahir: "",
+  jenisKelamin: "", agama: "", golonganDarah: "", tinggiBadanCm: "", beratBadanKg: "",
+  riwayatPenyakit: "", alergi: "", hobi: "", jenjangStudi: "", fakultas: "", prodi: "",
+  asalSma: "", noTelp: "", email: "", alamatAsal: "", jenisTempat: "", alamatJogja: "",
+  namaOrtu: "", noOrtu: "", alamatOrtu: "", idLine: "", idInstagram: "", idFacebook: "",
+  idTwitter: "", bidangTari: "", bidangMusik: "", organisasi: "", pernahMb: "false",
+  unitSebelumnya: "", section: "", kemampuanAlat: "", sessionId: "", website: "",
 };
 
 type FormValues = typeof INITIAL;
+
+const COMPRESS_OPTS = { maxSizeMB: 1, maxWidthOrHeight: 1600, useWebWorker: true };
 
 export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const [submissionToken] = useState(() => crypto.randomUUID());
@@ -69,6 +41,9 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   const [values, setValues] = useState<FormValues>(INITIAL);
+  const [pasFoto, setPasFoto] = useState<File | null>(null);
+  const [ktm, setKtm] = useState<File | null>(null);
+
   const [status, setStatus] = useState<
     | { state: "idle" }
     | { state: "submitting" }
@@ -79,7 +54,6 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   function update(name: keyof FormValues, value: string) {
     setValues((v) => ({ ...v, [name]: value }));
   }
-  // Shortcut to wire an input/select to a field.
   function field(name: keyof FormValues) {
     return {
       value: values[name],
@@ -91,23 +65,36 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!turnstileToken) {
-      setStatus({ state: "error", message: "Mohon selesaikan verifikasi CAPTCHA." });
-      return;
-    }
+    if (!pasFoto) return setStatus({ state: "error", message: "Mohon unggah pas foto." });
+    if (!ktm) return setStatus({ state: "error", message: "Mohon unggah foto KTM." });
+    if (!turnstileToken) return setStatus({ state: "error", message: "Mohon selesaikan verifikasi CAPTCHA." });
+
     setStatus({ state: "submitting" });
+    try {
+      // Compress in the browser so the upload stays small and within limits.
+      const [pasFotoC, ktmC] = await Promise.all([
+        imageCompression(pasFoto, COMPRESS_OPTS),
+        imageCompression(ktm, COMPRESS_OPTS),
+      ]);
 
-    const result = await submitApplication({
-      ...values,
-      submissionToken,
-      formLoadedAt,
-      turnstileToken,
-    });
+      const fd = new FormData();
+      for (const [k, v] of Object.entries(values)) fd.append(k, v);
+      fd.append("submissionToken", submissionToken);
+      fd.append("formLoadedAt", String(formLoadedAt));
+      fd.append("turnstileToken", turnstileToken);
+      fd.append("pasFoto", pasFotoC, "pasfoto.jpg");
+      fd.append("ktm", ktmC, "ktm.jpg");
 
-    if (result.ok) {
-      setStatus({ state: "success", referenceNumber: result.referenceNumber });
-    } else {
-      setStatus({ state: "error", message: result.error });
+      const result = await submitApplication(fd);
+      if (result.ok) {
+        setStatus({ state: "success", referenceNumber: result.referenceNumber });
+      } else {
+        setStatus({ state: "error", message: result.error });
+        turnstileRef.current?.reset();
+        setTurnstileToken("");
+      }
+    } catch {
+      setStatus({ state: "error", message: "Gagal memproses gambar. Silakan coba lagi." });
       turnstileRef.current?.reset();
       setTurnstileToken("");
     }
@@ -117,9 +104,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     return (
       <div>
         <h2>Pendaftaran berhasil!</h2>
-        <p>
-          Nomor referensi Anda: <strong>{status.referenceNumber}</strong>
-        </p>
+        <p>Nomor referensi Anda: <strong>{status.referenceNumber}</strong></p>
         <p>Simpan nomor ini sebagai bukti pendaftaran.</p>
       </div>
     );
@@ -127,14 +112,9 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      {/* Honeypot — off-screen, hidden from humans. */}
       <input
-        type="text"
-        name="website"
-        {...field("website")}
-        tabIndex={-1}
-        autoComplete="off"
-        aria-hidden="true"
+        type="text" name="website" {...field("website")}
+        tabIndex={-1} autoComplete="off" aria-hidden="true"
         style={{ position: "absolute", left: "-9999px" }}
       />
 
@@ -145,22 +125,19 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         <label>Nama Panggilan <input {...field("namaPanggilan")} /></label>
         <label>Tempat Lahir <input {...field("tempatLahir")} required /></label>
         <label>Tanggal Lahir <input type="date" {...field("tanggalLahir")} required /></label>
-        <label>
-          Jenis Kelamin
+        <label>Jenis Kelamin
           <select {...field("jenisKelamin")} required>
             <option value="" disabled>--Pilih Salah Satu--</option>
             {JENIS_KELAMIN_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
         </label>
-        <label>
-          Agama
+        <label>Agama
           <select {...field("agama")} required>
             <option value="" disabled>--Pilih Salah Satu--</option>
             {AGAMA_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
         </label>
-        <label>
-          Golongan Darah
+        <label>Golongan Darah
           <select {...field("golonganDarah")}>
             <option value="">--Pilih--</option>
             {GOLONGAN_DARAH_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -179,8 +156,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
       <fieldset>
         <legend>Data Akademik</legend>
-        <label>
-          Jenjang Studi
+        <label>Jenjang Studi
           <select {...field("jenjangStudi")}>
             <option value="">--Pilih--</option>
             {JENJANG_STUDI_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -196,8 +172,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         <label>Nomor Telepon <input {...field("noTelp")} required /></label>
         <label>Email <input type="email" {...field("email")} required /></label>
         <label>Alamat Asal <textarea {...field("alamatAsal")} /></label>
-        <label>
-          Jenis Tempat Tinggal di Jogja
+        <label>Jenis Tempat Tinggal di Jogja
           <select {...field("jenisTempat")}>
             <option value="">--Pilih--</option>
             {JENIS_TEMPAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -226,8 +201,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         <label>Bidang Tari <input {...field("bidangTari")} /></label>
         <label>Bidang Musik <input {...field("bidangMusik")} /></label>
         <label>Organisasi <input {...field("organisasi")} /></label>
-        <label>
-          Pernah Ikut Marching Band?
+        <label>Pernah Ikut Marching Band?
           <select {...field("pernahMb")}>
             <option value="false">Tidak</option>
             <option value="true">Ya</option>
@@ -239,15 +213,24 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       </fieldset>
 
       <fieldset>
+        <legend>Berkas</legend>
+        <label>Pas Foto
+          <input type="file" accept="image/*" required
+            onChange={(e) => setPasFoto(e.target.files?.[0] ?? null)} />
+        </label>
+        <label>Foto KTM
+          <input type="file" accept="image/*" required
+            onChange={(e) => setKtm(e.target.files?.[0] ?? null)} />
+        </label>
+      </fieldset>
+
+      <fieldset>
         <legend>Penempatan</legend>
-        <label>
-          Sesi Penempatan
+        <label>Sesi Penempatan
           <select {...field("sessionId")}>
             <option value="">--Pilih Sesi--</option>
             {sessions.map((s) => (
-              <option key={s.id} value={String(s.id)}>
-                {s.dayLabel} — Sesi {s.sessionNo}
-              </option>
+              <option key={s.id} value={String(s.id)}>{s.dayLabel} — Sesi {s.sessionNo}</option>
             ))}
           </select>
         </label>
@@ -261,9 +244,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         onExpire={() => setTurnstileToken("")}
       />
 
-      {status.state === "error" && (
-        <p style={{ color: "crimson" }}>{status.message}</p>
-      )}
+      {status.state === "error" && <p style={{ color: "crimson" }}>{status.message}</p>}
 
       <button type="submit" disabled={status.state === "submitting" || !turnstileToken}>
         {status.state === "submitting" ? "Mengirim..." : "Daftar"}

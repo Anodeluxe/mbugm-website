@@ -1,40 +1,60 @@
 // server/google/sync.ts
 //
-// The "side effects after a save" step: generate the PDF, upload it to Drive,
-// and append the row to the Sheet. Each step checks a sync flag first, so this
-// is safe to re-run — a resync only does the parts that haven't succeeded yet.
+// Side effects after a save: upload photos + PDF to Drive and append to the
+// Sheet. Every step is guarded by a flag/ID check, so it's safe to re-run
+// (resync only does the parts that haven't succeeded).
 
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { applicants, type Applicant } from "@/server/db/schema";
 import { renderApplicantPdf } from "@/server/pdf/render";
-import { uploadPdfToDrive } from "@/server/google/drive";
-import { appendApplicantRow } from "@/server/google/sheets";
+import { uploadFile, downloadFile } from "./drive";
+import { appendApplicantRow } from "./sheets";
+import { toDataUri } from "@/server/images";
 
-export async function syncApplicantToGoogle(applicant: Applicant): Promise<void> {
+type ImageBuffers = { pasFoto?: Buffer; ktm?: Buffer };
+
+export async function syncApplicantToGoogle(
+  applicant: Applicant,
+  images?: ImageBuffers,
+): Promise<void> {
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  if (!folderId) throw new Error("GOOGLE_DRIVE_FOLDER_ID is not set");
 
-  // 1. PDF -> Drive (skip if already done).
-  if (folderId && !applicant.driveSynced) {
-    const pdf = await renderApplicantPdf(applicant);
-    const fileId = await uploadPdfToDrive(
-      pdf,
-      `${applicant.referenceNumber}.pdf`,
-      folderId,
-    );
+  const ref = applicant.referenceNumber;
+  let pasFotoId = applicant.pasFotoDriveId;
+  let ktmId = applicant.fotoKtmDriveId;
+
+  // 1. Upload photos (only if we have fresh buffers and they're not uploaded).
+  if (images?.pasFoto && !pasFotoId) {
+    pasFotoId = await uploadFile(images.pasFoto, `${ref} - pasfoto.jpg`, "image/jpeg", folderId);
+    await db.update(applicants).set({ pasFotoDriveId: pasFotoId }).where(eq(applicants.id, applicant.id));
+  }
+  if (images?.ktm && !ktmId) {
+    ktmId = await uploadFile(images.ktm, `${ref} - ktm.jpg`, "image/jpeg", folderId);
+    await db.update(applicants).set({ fotoKtmDriveId: ktmId }).where(eq(applicants.id, applicant.id));
+  }
+
+  // 2. PDF -> Drive, with photos embedded. Use the fresh buffers if we have
+  //    them, otherwise pull the bytes back from Drive (the resync case).
+  if (!applicant.driveSynced) {
+    const pasFotoBuf = images?.pasFoto ?? (pasFotoId ? await downloadFile(pasFotoId) : undefined);
+    const ktmBuf = images?.ktm ?? (ktmId ? await downloadFile(ktmId) : undefined);
+
+    const pdf = await renderApplicantPdf(applicant, {
+      pasFoto: pasFotoBuf ? toDataUri(pasFotoBuf) : undefined,
+      ktm: ktmBuf ? toDataUri(ktmBuf) : undefined,
+    });
+    const pdfId = await uploadFile(pdf, `${ref}.pdf`, "application/pdf", folderId);
     await db
       .update(applicants)
-      .set({ pdfDriveId: fileId, pdfGenerated: true, driveSynced: true })
+      .set({ pdfDriveId: pdfId, pdfGenerated: true, driveSynced: true })
       .where(eq(applicants.id, applicant.id));
   }
 
-  // 2. Row -> Sheet (skip if already done). Done second so a Sheet failure
-  //    doesn't block the Drive upload — each succeeds independently.
+  // 3. Sheet append.
   if (!applicant.sheetSynced) {
     await appendApplicantRow(applicant);
-    await db
-      .update(applicants)
-      .set({ sheetSynced: true })
-      .where(eq(applicants.id, applicant.id));
+    await db.update(applicants).set({ sheetSynced: true }).where(eq(applicants.id, applicant.id));
   }
 }

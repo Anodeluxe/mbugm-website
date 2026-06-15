@@ -1,13 +1,16 @@
 // app/api/applicants/[id]/pdf/route.ts
 //
 // Test/preview endpoint: GET /api/applicants/<id>/pdf returns that applicant's
-// PDF. Open for now; locked behind admin auth in Phase 5.
+// PDF with their photos embedded (pulled from Drive). Open for now; locked
+// behind admin auth in Phase 5.
 
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { applicants } from "@/server/db/schema";
 import { renderApplicantPdf } from "@/server/pdf/render";
+import { downloadFile } from "@/server/google/drive";
+import { toDataUri } from "@/server/images";
 
 export const runtime = "nodejs";
 
@@ -24,11 +27,19 @@ export async function GET(
     return new NextResponse("Pendaftar tidak ditemukan", { status: 404 });
   }
 
-  const pdf = await renderApplicantPdf(applicant);
+  // Pull photos from Drive if they've been uploaded.
+  let pasFoto: string | undefined;
+  let ktm: string | undefined;
+  try {
+    if (applicant.pasFotoDriveId) pasFoto = toDataUri(await downloadFile(applicant.pasFotoDriveId));
+    if (applicant.fotoKtmDriveId) ktm = toDataUri(await downloadFile(applicant.fotoKtmDriveId));
+  } catch (e) {
+    console.error("Could not load photos for preview:", e);
+  }
 
-  // Wrap in a fresh Uint8Array: NextResponse's BodyInit doesn't accept Node's
-  // Buffer<ArrayBufferLike> generic, but a plain Uint8Array satisfies it.
-  return new NextResponse(new Uint8Array(pdf), {
+  const pdf = await renderApplicantPdf(applicant, { pasFoto, ktm });
+
+  return new NextResponse(pdf, {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="${applicant.referenceNumber}.pdf"`,
