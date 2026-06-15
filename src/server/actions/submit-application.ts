@@ -8,6 +8,7 @@ import { db } from "@/server/db";
 import { applicants } from "@/server/db/schema";
 import { applicantSchema } from "@/server/validation/applicant";
 import { verifyTurnstileToken } from "@/server/turnstile";
+import { syncApplicantToGoogle } from "@/server/google/sync";
 
 const MIN_FILL_SECONDS = 3;
 
@@ -22,7 +23,7 @@ function generateReferenceNumber(): string {
 }
 
 export async function submitApplication(raw: unknown): Promise<SubmitResult> {
-  // 1. VALIDATE on the server — never trust what the browser sent.
+  // 1. VALIDATE on the server.
   const parsed = applicantSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: "Data tidak valid. Periksa kembali isian Anda." };
@@ -38,16 +39,15 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     return { ok: false, error: "Pengiriman ditolak." };
   }
 
-  // 3. CAPTCHA: verify the Turnstile token with Cloudflare; capture IP.
+  // 3. CAPTCHA verification + capture IP.
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
-
   const captchaOk = await verifyTurnstileToken(data.turnstileToken, ip);
   if (!captchaOk) {
     return { ok: false, error: "Verifikasi CAPTCHA gagal. Silakan coba lagi." };
   }
 
-  // 4. IDEMPOTENCY: same submission token = a retry, not a new applicant.
+  // 4. IDEMPOTENCY.
   const existingByToken = await db.query.applicants.findFirst({
     where: eq(applicants.submissionToken, data.submissionToken),
   });
@@ -67,7 +67,8 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
     return { ok: false, error: "NIM ini sudah terdaftar." };
   }
 
-  // 6. INSERT. UNIQUE constraints in the DB are the real guarantee.
+  // 6. INSERT. We return the FULL row so we can hand it to the Google sync.
+  let inserted;
   try {
     const [row] = await db
       .insert(applicants)
@@ -75,8 +76,6 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
         submissionToken: data.submissionToken,
         referenceNumber: generateReferenceNumber(),
         ip: ip ?? null,
-
-        // Data diri
         nim: data.nim,
         namaLengkap: data.namaLengkap,
         namaPanggilan: data.namaPanggilan ?? null,
@@ -87,37 +86,25 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
         golonganDarah: data.golonganDarah ?? null,
         tinggiBadanCm: data.tinggiBadanCm ?? null,
         beratBadanKg: data.beratBadanKg ?? null,
-
-        // Kesehatan
         riwayatPenyakit: data.riwayatPenyakit ?? null,
         alergi: data.alergi ?? null,
         hobi: data.hobi ?? null,
-
-        // Akademik
         jenjangStudi: data.jenjangStudi ?? null,
         fakultas: data.fakultas ?? null,
         prodi: data.prodi ?? null,
         asalSma: data.asalSma ?? null,
-
-        // Kontak & alamat
         noTelp: data.noTelp,
         email: data.email,
         alamatAsal: data.alamatAsal ?? null,
         jenisTempat: data.jenisTempat ?? null,
         alamatJogja: data.alamatJogja ?? null,
-
-        // Orang tua / wali
         namaOrtu: data.namaOrtu ?? null,
         noOrtu: data.noOrtu ?? null,
         alamatOrtu: data.alamatOrtu ?? null,
-
-        // Media sosial
         idLine: data.idLine ?? null,
         idInstagram: data.idInstagram ?? null,
         idFacebook: data.idFacebook ?? null,
         idTwitter: data.idTwitter ?? null,
-
-        // Marching band
         bidangTari: data.bidangTari ?? null,
         bidangMusik: data.bidangMusik ?? null,
         organisasi: data.organisasi ?? null,
@@ -125,13 +112,10 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
         unitSebelumnya: data.unitSebelumnya ?? null,
         section: data.section ?? null,
         kemampuanAlat: data.kemampuanAlat ?? null,
-
-        // Penempatan
         sessionId: data.sessionId ?? null,
       })
-      .returning({ referenceNumber: applicants.referenceNumber });
-
-    return { ok: true, referenceNumber: row.referenceNumber };
+      .returning();
+    inserted = row;
   } catch (err) {
     const e = err as { code?: string; detail?: string };
     if (e.code === "23505") {
@@ -149,7 +133,18 @@ export async function submitApplication(raw: unknown): Promise<SubmitResult> {
       }
       return { ok: false, error: "Terjadi kesalahan, silakan coba lagi." };
     }
-    console.error("submitApplication failed:", err);
+    console.error("submitApplication insert failed:", err);
     return { ok: false, error: "Terjadi kesalahan di server. Silakan coba lagi." };
   }
+
+  // 7. SIDE EFFECTS (best-effort). The registration is already saved, so a
+  //    Google outage must NOT fail it — if this throws, the sync flags stay
+  //    false and the admin "resync" button fixes it later.
+  try {
+    await syncApplicantToGoogle(inserted);
+  } catch (e) {
+    console.error("Google sync failed (will need resync):", e);
+  }
+
+  return { ok: true, referenceNumber: inserted.referenceNumber };
 }
