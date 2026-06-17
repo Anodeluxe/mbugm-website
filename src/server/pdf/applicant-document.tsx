@@ -15,6 +15,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
+import type { Style } from "@react-pdf/types";
 import type { Applicant } from "@/server/db/schema";
 
 const C = {
@@ -98,7 +99,7 @@ function ImageSlot({
   label,
 }: {
   src?: string;
-  style: object;
+  style: Style;
   label: string;
 }) {
   if (src) return <Image src={src} style={style} />;
