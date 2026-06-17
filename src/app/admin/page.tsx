@@ -88,6 +88,14 @@ export default async function AdminHome({
     .orderBy(desc(applicants.createdAt))
     .limit(1000);
 
+  // Download link carries the active search/filter so you can scope the batch.
+  const batchParams = new URLSearchParams();
+  if (q && q.trim()) batchParams.set("q", q.trim());
+  if (filter === "unsynced") batchParams.set("filter", "unsynced");
+  const batchHref = `/api/applicants/batch-pdf${
+    batchParams.toString() ? `?${batchParams.toString()}` : ""
+  }`;
+
   return (
     <div>
       <div
@@ -100,7 +108,10 @@ export default async function AdminHome({
         }}
       >
         <h2 style={{ margin: 0 }}>Pendaftar</h2>
-        <ResyncAllButton unsyncedCount={unsyncedCount} />
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+          <a href={batchHref}>Unduh PDF gabungan</a>
+          <ResyncAllButton unsyncedCount={unsyncedCount} />
+        </div>
       </div>
 
       <form method="get" style={{ margin: "1rem 0" }}>
