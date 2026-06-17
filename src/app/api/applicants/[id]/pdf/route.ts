@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { auth } from "@/auth";
 import { db } from "@/server/db";
 import { applicants } from "@/server/db/schema";
 import { renderApplicantPdf } from "@/server/pdf/render";
@@ -18,6 +19,10 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Admin only — applicant PDFs contain personal data.
+  const session = await auth();
+  if (!session) return new NextResponse("Unauthorized", { status: 401 });
+
   const { id } = await params;
 
   const applicant = await db.query.applicants.findFirst({
