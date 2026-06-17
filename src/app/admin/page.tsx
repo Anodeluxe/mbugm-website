@@ -1,14 +1,15 @@
 // app/admin/page.tsx
 //
-// Dashboard home: searchable, filterable list of applicants with per-row resync.
-// Search runs through the URL (?q=&filter=) so it's bookmarkable and needs no
-// client state.
+// Dashboard home: a single long list (up to 1000 rows — comfortably above the
+// ~500 expected) with search, a sync filter, per-row resync, and a bulk
+// "resync all unsynced" button. Search runs through the URL (?q=&filter=).
 
 import Link from "next/link";
-import { and, or, ilike, eq, desc } from "drizzle-orm";
+import { and, or, ilike, eq, desc, count } from "drizzle-orm";
 import { db } from "@/server/db";
 import { applicants } from "@/server/db/schema";
 import { ResyncButton } from "@/components/resync-button";
+import { ResyncAllButton } from "@/components/resync-all-button";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,18 @@ export default async function AdminHome({
 }) {
   const { q, filter } = await searchParams;
 
-  // Build the filter conditions from the URL params.
+  const unsynced = or(
+    eq(applicants.driveSynced, false),
+    eq(applicants.sheetSynced, false),
+  );
+
+  // Total unsynced (across everyone, not just the filtered view) for the bulk button.
+  const [{ value: unsyncedCount }] = await db
+    .select({ value: count() })
+    .from(applicants)
+    .where(unsynced);
+
+  // Build the list query from the URL params.
   const conditions = [];
   if (q && q.trim()) {
     const like = `%${q.trim()}%`;
@@ -66,11 +78,7 @@ export default async function AdminHome({
       ),
     );
   }
-  if (filter === "unsynced") {
-    conditions.push(
-      or(eq(applicants.driveSynced, false), eq(applicants.sheetSynced, false)),
-    );
-  }
+  if (filter === "unsynced") conditions.push(unsynced);
   const where = conditions.length ? and(...conditions) : undefined;
 
   const rows = await db
@@ -78,13 +86,24 @@ export default async function AdminHome({
     .from(applicants)
     .where(where)
     .orderBy(desc(applicants.createdAt))
-    .limit(100);
+    .limit(1000);
 
   return (
     <div>
-      <h2>Pendaftar</h2>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "1rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <h2 style={{ margin: 0 }}>Pendaftar</h2>
+        <ResyncAllButton unsyncedCount={unsyncedCount} />
+      </div>
 
-      <form method="get" style={{ marginBottom: "1rem" }}>
+      <form method="get" style={{ margin: "1rem 0" }}>
         <input
           type="text"
           name="q"
@@ -105,7 +124,7 @@ export default async function AdminHome({
       </form>
 
       <p style={{ fontSize: "0.8rem", color: "#777" }}>
-        Menampilkan {rows.length} pendaftar{rows.length === 100 ? " (maks. 100)" : ""}.
+        Menampilkan {rows.length} pendaftar{rows.length === 1000 ? " (maks. 1000)" : ""}.
       </p>
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
