@@ -44,7 +44,7 @@ export async function GET(
 
   const pdf = await renderApplicantPdf(applicant, { pasFoto, ktm });
 
-  return new NextResponse(pdf, {
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="${applicant.referenceNumber}.pdf"`,
