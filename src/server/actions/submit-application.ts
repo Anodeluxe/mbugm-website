@@ -10,6 +10,8 @@ import { applicantSchema } from "@/server/validation/applicant";
 import { verifyTurnstileToken } from "@/server/turnstile";
 import { syncApplicantToGoogle } from "@/server/google/sync";
 import { processImage } from "@/server/images";
+import { config, isRegistrationOpen } from "@/lib/config";
+
 const MIN_FILL_SECONDS = 3;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB ceiling (client compresses to ~1MB)
 
@@ -18,9 +20,8 @@ type SubmitResult =
   | { ok: false; error: string };
 
 function generateReferenceNumber(): string {
-  const year = new Date().getFullYear();
   const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
-  return `MBUGM-${year}-${suffix}`;
+  return `${config.referencePrefix}-${config.year}-${suffix}`;
 }
 
 function isUploadedFile(v: FormDataEntryValue | null): v is File {
@@ -28,6 +29,12 @@ function isUploadedFile(v: FormDataEntryValue | null): v is File {
 }
 
 export async function submitApplication(formData: FormData): Promise<SubmitResult> {
+  // Registration window — enforced server-side so a stale open tab can't submit
+  // after closing.
+  if (!isRegistrationOpen()) {
+    return { ok: false, error: "Pendaftaran sedang ditutup." };
+  }
+
   // 0. Split the text fields from the file fields.
   const raw: Record<string, FormDataEntryValue> = {};
   for (const [k, v] of formData.entries()) {
