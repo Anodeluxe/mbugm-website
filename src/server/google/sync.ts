@@ -20,6 +20,9 @@ export async function syncApplicantToGoogle(
 ): Promise<void> {
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
   if (!folderId) throw new Error("GOOGLE_DRIVE_FOLDER_ID is not set");
+  // Photos (pas foto + KTM) go in their own folder; falls back to the form
+  // folder when unset so existing deployments keep working.
+  const imagesFolderId = process.env.GOOGLE_DRIVE_IMAGES_FOLDER_ID || folderId;
 
   const ref = applicant.referenceNumber;
   let pasFotoId = applicant.pasFotoDriveId;
@@ -27,11 +30,11 @@ export async function syncApplicantToGoogle(
 
   // 1. Upload photos (only if we have fresh buffers and they're not uploaded).
   if (images?.pasFoto && !pasFotoId) {
-    pasFotoId = await uploadFile(images.pasFoto, `${ref} - pasfoto.jpg`, "image/jpeg", folderId);
+    pasFotoId = await uploadFile(images.pasFoto, `${ref} - pasfoto.jpg`, "image/jpeg", imagesFolderId);
     await db.update(applicants).set({ pasFotoDriveId: pasFotoId }).where(eq(applicants.id, applicant.id));
   }
   if (images?.ktm && !ktmId) {
-    ktmId = await uploadFile(images.ktm, `${ref} - ktm.jpg`, "image/jpeg", folderId);
+    ktmId = await uploadFile(images.ktm, `${ref} - ktm.jpg`, "image/jpeg", imagesFolderId);
     await db.update(applicants).set({ fotoKtmDriveId: ktmId }).where(eq(applicants.id, applicant.id));
   }
 
