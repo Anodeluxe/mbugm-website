@@ -154,6 +154,7 @@ export function ApplicantDocument({
     ["Tempat Lahir", disp(a.tempatLahir)],
     ["Tanggal Lahir", formatDate(a.tanggalLahir)],
     ["Hobi dan Kesukaan", disp(a.hobi)],
+    ["3 Kata yang Menggambarkan Diri", disp(a.tigaKata)],
     ["Tinggi Badan (cm)", disp(a.tinggiBadanCm)],
     ["Berat Badan (kg)", disp(a.beratBadanKg)],
     ["Golongan Darah", disp(a.golonganDarah)],

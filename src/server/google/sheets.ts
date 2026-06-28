@@ -29,6 +29,7 @@ export const SHEET_HEADERS = [
   "Pernah MB",
   "Unit Sebelumnya",
   "Section",
+  "3 Kata",
 ];
 
 export async function appendApplicantRow(a: Applicant): Promise<void> {
@@ -55,6 +56,7 @@ export async function appendApplicantRow(a: Applicant): Promise<void> {
     a.pernahMb ? "Ya" : "Tidak",
     a.unitSebelumnya ?? "",
     a.section ?? "",
+    a.tigaKata ?? "",
   ];
 
   await sheets.spreadsheets.values.append({

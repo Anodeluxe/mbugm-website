@@ -1,0 +1,552 @@
+{
+  "id": "fb755571-12ff-4afa-92d1-911e98e65d7d",
+  "prevId": "70804015-076b-40ee-aea1-ad1d82047d6c",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.applicants": {
+      "name": "applicants",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "reference_number": {
+          "name": "reference_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "submission_token": {
+          "name": "submission_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "ip": {
+          "name": "ip",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "app_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'submitted'"
+        },
+        "nim": {
+          "name": "nim",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nama_lengkap": {
+          "name": "nama_lengkap",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nama_panggilan": {
+          "name": "nama_panggilan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tempat_lahir": {
+          "name": "tempat_lahir",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tanggal_lahir": {
+          "name": "tanggal_lahir",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jenis_kelamin": {
+          "name": "jenis_kelamin",
+          "type": "sex",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "agama": {
+          "name": "agama",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "golongan_darah": {
+          "name": "golongan_darah",
+          "type": "blood_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tinggi_badan_cm": {
+          "name": "tinggi_badan_cm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "berat_badan_kg": {
+          "name": "berat_badan_kg",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "riwayat_penyakit": {
+          "name": "riwayat_penyakit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alergi": {
+          "name": "alergi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hobi": {
+          "name": "hobi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tiga_kata": {
+          "name": "tiga_kata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jenjang_studi": {
+          "name": "jenjang_studi",
+          "type": "study_level",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fakultas": {
+          "name": "fakultas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prodi": {
+          "name": "prodi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "asal_sma": {
+          "name": "asal_sma",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "no_telp": {
+          "name": "no_telp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alamat_asal": {
+          "name": "alamat_asal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alamat_jogja": {
+          "name": "alamat_jogja",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jenis_tempat": {
+          "name": "jenis_tempat",
+          "type": "housing_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nama_ortu": {
+          "name": "nama_ortu",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "no_ortu": {
+          "name": "no_ortu",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alamat_ortu": {
+          "name": "alamat_ortu",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_line": {
+          "name": "id_line",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_instagram": {
+          "name": "id_instagram",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_facebook": {
+          "name": "id_facebook",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_twitter": {
+          "name": "id_twitter",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bidang_musik": {
+          "name": "bidang_musik",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bidang_tari": {
+          "name": "bidang_tari",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "organisasi": {
+          "name": "organisasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pernah_mb": {
+          "name": "pernah_mb",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "unit_sebelumnya": {
+          "name": "unit_sebelumnya",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "section": {
+          "name": "section",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kemampuan_alat": {
+          "name": "kemampuan_alat",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pas_foto_drive_id": {
+          "name": "pas_foto_drive_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "foto_ktm_drive_id": {
+          "name": "foto_ktm_drive_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pdf_drive_id": {
+          "name": "pdf_drive_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_proof_drive_id": {
+          "name": "payment_proof_drive_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_status": {
+          "name": "payment_status",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pdf_generated": {
+          "name": "pdf_generated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "drive_synced": {
+          "name": "drive_synced",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "sheet_synced": {
+          "name": "sheet_synced",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "idx_applicants_email": {
+          "name": "idx_applicants_email",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_applicants_created_at": {
+          "name": "idx_applicants_created_at",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_applicants_status": {
+          "name": "idx_applicants_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "applicants_session_id_sessions_id_fk": {
+          "name": "applicants_session_id_sessions_id_fk",
+          "tableFrom": "applicants",
+          "tableTo": "sessions",
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "applicants_reference_number_unique": {
+          "name": "applicants_reference_number_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "reference_number"
+          ]
+        },
+        "applicants_submission_token_unique": {
+          "name": "applicants_submission_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "submission_token"
+          ]
+        },
+        "applicants_nim_unique": {
+          "name": "applicants_nim_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "nim"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "day_label": {
+          "name": "day_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "session_no": {
+          "name": "session_no",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quota": {
+          "name": "quota",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sessions_day_session_unique": {
+          "name": "sessions_day_session_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "day_label",
+            "session_no"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.app_status": {
+      "name": "app_status",
+      "schema": "public",
+      "values": [
+        "submitted",
+        "under_review",
+        "accepted",
+        "waitlisted",
+        "rejected",
+        "withdrawn"
+      ]
+    },
+    "public.blood_type": {
+      "name": "blood_type",
+      "schema": "public",
+      "values": [
+        "A",
+        "B",
+        "AB",
+        "O"
+      ]
+    },
+    "public.housing_type": {
+      "name": "housing_type",
+      "schema": "public",
+      "values": [
+        "Kos",
+        "Asrama",
+        "Rumah orang tua",
+        "Rumah saudara",
+        "Lainnya"
+      ]
+    },
+    "public.sex": {
+      "name": "sex",
+      "schema": "public",
+      "values": [
+        "Laki-laki",
+        "Perempuan"
+      ]
+    },
+    "public.study_level": {
+      "name": "study_level",
+      "schema": "public",
+      "values": [
+        "D3",
+        "D4",
+        "S1",
+        "S2",
+        "S3",
+        "Profesi"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

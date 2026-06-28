@@ -57,6 +57,10 @@ export const applicantSchema = z.object({
   riwayatPenyakit: optionalText,
   alergi: optionalText,
   hobi: optionalText,
+  tigaKata: z
+    .string()
+    .trim()
+    .min(1, "3 kata yang menggambarkan dirimu wajib diisi"),
 
   // --- Akademik ---
   jenjangStudi: z.preprocess(

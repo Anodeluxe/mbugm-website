@@ -23,7 +23,7 @@ type SessionOption = { id: number; dayLabel: string; sessionNo: number };
 const INITIAL = {
   nim: "", namaLengkap: "", namaPanggilan: "", tempatLahir: "", tanggalLahir: "",
   jenisKelamin: "", agama: "", golonganDarah: "", tinggiBadanCm: "", beratBadanKg: "",
-  riwayatPenyakit: "", alergi: "", hobi: "", jenjangStudi: "", fakultas: "", prodi: "",
+  riwayatPenyakit: "", alergi: "", hobi: "", tigaKata: "", jenjangStudi: "", fakultas: "", prodi: "",
   asalSma: "", noTelp: "", email: "", alamatAsal: "", jenisTempat: "", alamatJogja: "",
   namaOrtu: "", noOrtu: "", alamatOrtu: "", idLine: "", idInstagram: "", idFacebook: "",
   idTwitter: "", bidangTari: "", bidangMusik: "", organisasi: "", pernahMb: "false",
@@ -152,6 +152,9 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         <label>Riwayat Penyakit <textarea {...field("riwayatPenyakit")} /></label>
         <label>Alergi <textarea {...field("alergi")} /></label>
         <label>Hobi <input {...field("hobi")} /></label>
+        <label>3 Kata yang Menggambarkan Dirimu
+          <input {...field("tigaKata")} placeholder="mis. ceria, pekerja keras, kreatif" required />
+        </label>
       </fieldset>
 
       <fieldset>

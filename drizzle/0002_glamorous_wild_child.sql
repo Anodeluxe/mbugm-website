@@ -1,0 +1,1 @@
+ALTER TABLE "applicants" ADD COLUMN "tiga_kata" text;

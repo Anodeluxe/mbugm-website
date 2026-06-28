@@ -101,6 +101,7 @@ export const applicants = pgTable(
     riwayatPenyakit: text("riwayat_penyakit"),
     alergi: text("alergi"),
     hobi: text("hobi"),
+    tigaKata: text("tiga_kata"), // "3 kata yang menggambarkan dirimu"
 
     // Academic
     jenjangStudi: studyLevelEnum("jenjang_studi"),

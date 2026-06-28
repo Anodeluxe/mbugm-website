@@ -124,6 +124,7 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
         riwayatPenyakit: data.riwayatPenyakit ?? null,
         alergi: data.alergi ?? null,
         hobi: data.hobi ?? null,
+        tigaKata: data.tigaKata,
         jenjangStudi: data.jenjangStudi ?? null,
         fakultas: data.fakultas ?? null,
         prodi: data.prodi ?? null,

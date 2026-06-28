@@ -15,6 +15,13 @@
       "when": 1780628259290,
       "tag": "0001_breezy_trish_tilby",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782620714448,
+      "tag": "0002_glamorous_wild_child",
+      "breakpoints": true
     }
   ]
 }
