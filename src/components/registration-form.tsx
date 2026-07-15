@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import imageCompression from "browser-image-compression";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { submitApplication } from "@/server/actions/submit-application";
@@ -35,6 +35,10 @@ const INITIAL = {
 type FormValues = typeof INITIAL;
 
 const COMPRESS_OPTS = { maxSizeMB: 1, maxWidthOrHeight: 1600, useWebWorker: true };
+const DRAFT_DB_NAME = "mbugm-registration-draft";
+const DRAFT_STORE_NAME = "drafts";
+const DRAFT_KEY = "daftar-v1";
+const SAVE_DEBOUNCE_MS = 400;
 
 // Required fields per step — used for manual per-step validation before advancing.
 const REQUIRED_PER_STEP: Partial<Record<number, (keyof FormValues)[]>> = {
@@ -58,6 +62,81 @@ const STEPS = [
 
 const TOTAL_STEPS = STEPS.length;
 
+type DraftPayload = {
+  values: FormValues;
+  currentStep: number;
+  pasFoto: File | null;
+  ktm: File | null;
+  savedAt: number;
+};
+
+function openDraftDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = window.indexedDB.open(DRAFT_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(DRAFT_STORE_NAME)) {
+        db.createObjectStore(DRAFT_STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function readDraft(): Promise<DraftPayload | null> {
+  const db = await openDraftDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DRAFT_STORE_NAME, "readonly");
+    const req = tx.objectStore(DRAFT_STORE_NAME).get(DRAFT_KEY);
+    req.onsuccess = () => resolve((req.result as DraftPayload | undefined) ?? null);
+    req.onerror = () => reject(req.error);
+    tx.oncomplete = () => db.close();
+    tx.onerror = () => db.close();
+    tx.onabort = () => db.close();
+  });
+}
+
+async function writeDraft(draft: DraftPayload) {
+  const db = await openDraftDb();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(DRAFT_STORE_NAME, "readwrite");
+    tx.objectStore(DRAFT_STORE_NAME).put(draft, DRAFT_KEY);
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
+    tx.onabort = () => {
+      db.close();
+      reject(tx.error);
+    };
+  });
+}
+
+async function clearDraft() {
+  const db = await openDraftDb();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(DRAFT_STORE_NAME, "readwrite");
+    tx.objectStore(DRAFT_STORE_NAME).delete(DRAFT_KEY);
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
+    tx.onabort = () => {
+      db.close();
+      reject(tx.error);
+    };
+  });
+}
+
 export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const [submissionToken] = useState(() => crypto.randomUUID());
   const [formLoadedAt] = useState(() => Date.now());
@@ -70,6 +149,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const [pasFoto, setPasFoto] = useState<File | null>(null);
   const [ktm, setKtm] = useState<File | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const [status, setStatus] = useState<
     | { state: "idle" }
@@ -93,6 +174,51 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const scrollToTop = useCallback(() => {
     formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      try {
+        const draft = await readDraft();
+        if (!active) return;
+        if (draft) {
+          setValues(draft.values);
+          setCurrentStep(Math.max(0, Math.min(draft.currentStep, TOTAL_STEPS - 1)));
+          setPasFoto(draft.pasFoto);
+          setKtm(draft.ktm);
+          setDraftStatus("saved");
+        }
+      } catch {
+        if (active) setDraftStatus("error");
+      } finally {
+        if (active) setDraftReady(true);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady || status.state === "success") return;
+
+    setDraftStatus("saving");
+    const timeout = window.setTimeout(() => {
+      void writeDraft({
+        values,
+        currentStep,
+        pasFoto,
+        ktm,
+        savedAt: Date.now(),
+      })
+        .then(() => setDraftStatus("saved"))
+        .catch(() => setDraftStatus("error"));
+    }, SAVE_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [draftReady, values, currentStep, pasFoto, ktm, status.state]);
 
   function validateStep(step: number): string | null {
     const required = REQUIRED_PER_STEP[step];
@@ -158,6 +284,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
       const result = await submitApplication(fd);
       if (result.ok) {
+        await clearDraft().catch(() => undefined);
+        setDraftStatus("idle");
         setStatus({ state: "success", referenceNumber: result.referenceNumber });
         scrollToTop();
       } else {
@@ -172,7 +300,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     }
   }
 
-  /* ── Success screen ── */
+  /* —— Success screen —— */
   if (status.state === "success") {
     return (
       <div ref={formTopRef} className="rounded-2xl border border-border bg-parchment/30 p-8 sm:p-10 text-center">
@@ -208,7 +336,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
   return (
     <div ref={formTopRef}>
-      {/* ── Progress header ── */}
+      {/* —— Progress header —— */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="font-body text-xs font-bold text-warm-gray tracking-wide">
@@ -240,6 +368,12 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             />
           ))}
         </div>
+        <p className="mt-3 text-center font-body text-xs text-warm-gray min-h-4">
+          {draftStatus === "saving" && "Menyimpan draft..."}
+          {draftStatus === "saved" && "Draft tersimpan di device ini."}
+          {draftStatus === "error" && "Draft gagal disimpan."}
+          {draftStatus === "idle" && "\u00A0"}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} noValidate>
@@ -250,7 +384,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           style={{ position: "absolute", left: "-9999px", width: "1px", opacity: 0 }}
         />
 
-        {/* ── Step 0: Data Diri ── */}
+        {/* —— Step 0: Data Diri —— */}
         {currentStep === 0 && (
           <fieldset>
             <legend>Data Diri</legend>
@@ -304,7 +438,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </fieldset>
         )}
 
-        {/* ── Step 1: Kesehatan & Hobi ── */}
+        {/* —— Step 1: Kesehatan & Hobi —— */}
         {currentStep === 1 && (
           <fieldset>
             <legend>Kesehatan & Hobi</legend>
@@ -313,7 +447,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 <textarea {...field("riwayatPenyakit")} placeholder="Tulis jika ada, atau kosongkan jika tidak ada" />
               </Field>
               <Field label="Alergi">
-                <textarea {...field("alergi")} placeholder="mis. debu, obat tertentu — kosongkan jika tidak ada" />
+                <textarea {...field("alergi")} placeholder="mis. debu, obat tertentu - kosongkan jika tidak ada" />
               </Field>
               <Field label="Hobi">
                 <input {...field("hobi")} placeholder="mis. membaca, bermain musik, olahraga" />
@@ -329,7 +463,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </fieldset>
         )}
 
-        {/* ── Step 2: Data Akademik ── */}
+        {/* —— Step 2: Data Akademik —— */}
         {currentStep === 2 && (
           <fieldset>
             <legend>Data Akademik</legend>
@@ -353,7 +487,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </fieldset>
         )}
 
-        {/* ── Step 3: Kontak & Alamat ── */}
+        {/* —— Step 3: Kontak & Alamat —— */}
         {currentStep === 3 && (
           <fieldset>
             <legend>Kontak & Alamat</legend>
@@ -390,7 +524,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </fieldset>
         )}
 
-        {/* ── Step 4: Orang Tua / Wali ── */}
+        {/* —— Step 4: Orang Tua / Wali —— */}
         {currentStep === 4 && (
           <fieldset>
             <legend>Data Orang Tua / Wali</legend>
@@ -408,7 +542,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </fieldset>
         )}
 
-        {/* ── Step 5: Media Sosial ── */}
+        {/* —— Step 5: Media Sosial —— */}
         {currentStep === 5 && (
           <fieldset>
             <legend>Media Sosial</legend>
@@ -441,7 +575,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </fieldset>
         )}
 
-        {/* ── Step 6: Pengalaman Marching Band ── */}
+        {/* —— Step 6: Pengalaman Marching Band —— */}
         {currentStep === 6 && (
           <fieldset>
             <legend>Pengalaman Marching Band</legend>
@@ -466,10 +600,10 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 </>
               )}
               <Field label="Bidang Tari yang Diminati">
-                <input {...field("bidangTari")} placeholder="mis. Color Guard, Majorette, Flag — kosongkan jika tidak ada" />
+                <input {...field("bidangTari")} placeholder="mis. Color Guard, Majorette, Flag - kosongkan jika tidak ada" />
               </Field>
               <Field label="Bidang Musik yang Diminati">
-                <input {...field("bidangMusik")} placeholder="mis. Brass, Battery Percussion, Pit — kosongkan jika tidak ada" />
+                <input {...field("bidangMusik")} placeholder="mis. Brass, Battery Percussion, Pit - kosongkan jika tidak ada" />
               </Field>
               <Field label="Organisasi Lain yang Diikuti">
                 <input {...field("organisasi")} placeholder="mis. BEM Fakultas, UKM Paduan Suara" />
@@ -478,7 +612,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </fieldset>
         )}
 
-        {/* ── Step 7: Berkas ── */}
+        {/* —— Step 7: Berkas —— */}
         {currentStep === 7 && (
           <fieldset>
             <legend>Berkas</legend>
@@ -515,7 +649,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </fieldset>
         )}
 
-        {/* ── Step 8: Penempatan & Verifikasi ── */}
+        {/* —— Step 8: Penempatan & Verifikasi —— */}
         {currentStep === 8 && (
           <fieldset>
             <legend>Penempatan & Verifikasi</legend>
@@ -525,7 +659,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   <option value="">-- Pilih Sesi --</option>
                   {sessions.map((s) => (
                     <option key={s.id} value={String(s.id)}>
-                      {s.dayLabel} — Sesi {s.sessionNo}
+                      {s.dayLabel} ─ Sesi {s.sessionNo}
                     </option>
                   ))}
                 </select>
@@ -542,19 +676,19 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 {[
                   { label: "Nama", value: values.namaLengkap },
                   { label: "NIM", value: values.nim },
-                  { label: "Prodi", value: [values.jenjangStudi, values.prodi, values.fakultas].filter(Boolean).join(" — ") },
+                  { label: "Prodi", value: [values.jenjangStudi, values.prodi, values.fakultas].filter(Boolean).join(" ─ ") },
                   { label: "Email", value: values.email },
-                  { label: "Pas Foto", value: pasFoto?.name ?? "—" },
-                  { label: "KTM", value: ktm?.name ?? "—" },
+                  { label: "Pas Foto", value: pasFoto?.name ?? "─" },
+                  { label: "KTM", value: ktm?.name ?? "─" },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex gap-3 text-sm font-body">
                     <span className="text-warm-gray w-24 shrink-0">{label}</span>
-                    <span className="text-ink font-medium truncate">{value || "—"}</span>
+                    <span className="text-ink font-medium truncate">{value || "─"}</span>
                   </div>
                 ))}
               </div>
 
-              {/* Turnstile CAPTCHA — only mounts on last step */}
+              {/* Turnstile CAPTCHA ─ only mounts on last step */}
               <div>
                 <p className="font-body text-xs font-bold tracking-[0.12em] text-warm-gray uppercase mb-2">
                   Verifikasi
@@ -652,3 +786,4 @@ function Field({
     </div>
   );
 }
+
