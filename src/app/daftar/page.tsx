@@ -1,14 +1,15 @@
-// app/daftar/page.tsx — Registration form page
+// app/daftar/page.tsx - Registration form page
 // Server component: queries sessions, guards with registration window check.
 
 import Link from "next/link";
-import { db } from "@/server/db";
-import { sessions as sessionsTable } from "@/server/db/schema";
 import { RegistrationForm } from "@/components/registration-form";
 import { config, isRegistrationOpen } from "@/lib/config";
 
 export default async function DaftarPage() {
-  if (!isRegistrationOpen()) {
+  const useLocalFormMock =
+    process.env.NODE_ENV !== "production" && process.env.LOCAL_FORM_MOCK === "1";
+
+  if (!useLocalFormMock && !isRegistrationOpen()) {
     return (
       <div className="min-h-[100dvh] bg-paper flex flex-col items-center justify-center px-4 text-center">
         <div className="w-12 h-12 bg-parchment rounded-full flex items-center justify-center mb-6">
@@ -36,14 +37,12 @@ export default async function DaftarPage() {
     );
   }
 
-  const sessions = await db
-    .select({
-      id: sessionsTable.id,
-      dayLabel: sessionsTable.dayLabel,
-      sessionNo: sessionsTable.sessionNo,
-    })
-    .from(sessionsTable)
-    .orderBy(sessionsTable.dayLabel, sessionsTable.sessionNo);
+  const sessions = useLocalFormMock
+    ? [
+        { id: 1, dayLabel: "Local Test", sessionNo: 1 },
+        { id: 2, dayLabel: "Local Test", sessionNo: 2 },
+      ]
+    : await getSessions();
 
   return (
     <div className="min-h-[100dvh] bg-paper">
@@ -59,7 +58,7 @@ export default async function DaftarPage() {
             </span>
           </Link>
           <span className="font-body text-xs text-warm-gray">
-            {config.shortName} — Formulir Pendaftaran
+            {config.shortName} - Formulir Pendaftaran
           </span>
         </div>
       </div>
@@ -78,7 +77,7 @@ export default async function DaftarPage() {
             Formulir Pendaftaran
           </h1>
           <p className="font-body text-warm-gray text-sm">
-            {config.eventName} {config.year} — Isi semua kolom yang wajib dengan teliti.
+            {config.eventName} {config.year} - Isi semua kolom yang wajib dengan teliti.
           </p>
         </div>
 
@@ -86,4 +85,20 @@ export default async function DaftarPage() {
       </div>
     </div>
   );
+}
+
+async function getSessions() {
+  const [{ db }, { sessions: sessionsTable }] = await Promise.all([
+    import("@/server/db"),
+    import("@/server/db/schema"),
+  ]);
+
+  return db
+    .select({
+      id: sessionsTable.id,
+      dayLabel: sessionsTable.dayLabel,
+      sessionNo: sessionsTable.sessionNo,
+    })
+    .from(sessionsTable)
+    .orderBy(sessionsTable.dayLabel, sessionsTable.sessionNo);
 }
