@@ -550,6 +550,7 @@
     height: auto;
     aspect-ratio: 1200 / 799;
     position: relative;
+    left: auto;
     right: auto;
     bottom: auto;
     align-self: center;
@@ -622,6 +623,144 @@
   .footerTop { grid-template-columns: 1fr 1fr; gap: 54px 30px; }
   .footerBrand { grid-column: 1 / -1; }
   .footerBottom { margin-top: 80px; flex-direction: column; }
+}
+
+@media (min-width: 1051px) {
+  /*
+   * Scale desktop composition with viewport width. Browser zoom changes the
+   * CSS viewport, so vw-based geometry keeps the Figma proportions intact.
+   */
+  .header { height: 4.1758vw; }
+  .nav { width: 93.7vw; }
+  .brand {
+    height: 3.2967vw;
+    gap: .6593vw;
+    font-size: .8791vw;
+  }
+  .brand img { width: 3.2967vw; height: 3.2967vw; }
+  .navLinks { gap: 1.978vw; font-size: .6857vw; }
+  .navCta, .navClosed {
+    min-height: 2.3077vw;
+    padding: 0 1.3187vw;
+    border-radius: .2198vw;
+  }
+
+  .hero { height: 70.1099vw; padding: 0; }
+  .heroCopy {
+    width: 36.5934vw;
+    top: 11.4286vw;
+    left: 3.5165vw;
+    margin: 0;
+  }
+  .eyebrow, .sectionLabel { font-size: .7692vw; }
+  .eyebrow {
+    margin-bottom: 1.2637vw;
+    gap: .5495vw;
+  }
+  .eyebrow span { width: 1.8681vw; height: .1099vw; }
+  .hero h1 { width: 34.7253vw; font-size: 3.5165vw; }
+  .heroLead {
+    width: 36.5934vw;
+    margin-top: .989vw;
+    font-size: 1.0989vw;
+  }
+  .registrationPeriod {
+    margin-top: 1.978vw;
+    margin-left: .2747vw;
+    gap: .4396vw;
+  }
+  .registrationPeriod > span { width: .3297vw; border-radius: .1099vw; }
+  .registrationPeriod p {
+    margin-bottom: .3297vw;
+    font-size: .7692vw;
+  }
+  .registrationPeriod time { font-size: .7692vw; }
+  .heroActions {
+    margin-top: 5.5495vw;
+    margin-left: -.0549vw;
+    gap: .8242vw;
+  }
+  .primaryButton, .secondaryButton, .disabledButton {
+    width: 12.3626vw;
+    min-height: 3.2967vw;
+    border-radius: .4396vw;
+    gap: .6593vw;
+    font-size: 1.0989vw;
+  }
+  .secondaryButton { border-width: .1099vw; }
+
+  .arena {
+    width: 39.5604vw;
+    height: 26.3736vw;
+    top: 1.5385vw;
+    left: 45%;
+  }
+  .flag {
+    width: 20.5495vw;
+    height: 30.8242vw;
+    top: 10vw;
+    left: 80.2%;
+  }
+  .percussion {
+    width: 24.2857vw;
+    height: 26.5934vw;
+    top: 36.7033vw;
+    left: 71.4%;
+  }
+  .brass {
+    width: 34.6154vw;
+    height: 23.0769vw;
+    top: 53.8462vw;
+    left: 43.3%;
+  }
+  .family {
+    width: 34.1209vw;
+    height: 22.7473vw;
+    top: 66.2637vw;
+  }
+  .guard {
+    width: 17.0879vw;
+    height: 25.6044vw;
+    top: 59.4505vw;
+    left: 30.1%;
+  }
+  .drillDots {
+    width: 31.7582vw;
+    height: 18.1319vw;
+    top: 34.5055vw;
+    left: 50.104%;
+    background-size: 1.3626vw 1.3626vw;
+  }
+
+  .location {
+    --location-left: 7.54vw;
+    --location-card-width: 30.9288vw;
+    --location-art-width: 58.9102vw;
+    height: 39.2243vw;
+  }
+  .locationCard {
+    width: var(--location-card-width);
+    height: 24.5459vw;
+    left: var(--location-left);
+    top: 6.0874vw;
+    border-radius: .9818vw;
+  }
+  .locationCopy { padding: 1.1782vw .9818vw; }
+  .locationCopy p {
+    margin-bottom: .2946vw;
+    font-size: .6284vw;
+  }
+  .locationCopy h2 {
+    margin-bottom: .1964vw;
+    font-size: .864vw;
+  }
+  .locationCopy address { font-size: .6127vw; }
+  .stadiumArt {
+    width: var(--location-art-width);
+    height: 39.2243vw;
+    left: calc(var(--location-left) + var(--location-card-width));
+    right: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
