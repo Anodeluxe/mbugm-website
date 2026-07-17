@@ -754,6 +754,28 @@
     left: auto;
   }
 
+  .about {
+    height: 38.6813vw;
+    min-height: 0;
+    padding: 7.4725vw 11.5751vw 0;
+    grid-template-columns: 28.5714vw minmax(0, 1fr);
+    gap: 6.0073vw;
+  }
+  .aboutIntro h2 {
+    max-width: 28.5714vw;
+    margin: 1.978vw 0 1.4286vw;
+    font-size: 3vw;
+  }
+  .aboutCaption {
+    max-width: 28.5714vw;
+    font-size: .8791vw;
+  }
+  .aboutBody {
+    max-width: none;
+    gap: 1.3187vw;
+    font-size: 1.0256vw;
+  }
+
   .location {
     --location-left: 7.54vw;
     --location-card-width: 30.9288vw;
