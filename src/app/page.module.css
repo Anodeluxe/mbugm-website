@@ -732,6 +732,28 @@
     background-size: 1.3626vw 1.3626vw;
   }
 
+  .stats {
+    height: 52.7473vw;
+    min-height: 0;
+  }
+  .statsGrid {
+    width: 42.5824vw;
+    padding-top: 24.3956vw;
+    margin-left: 2.3077vw;
+    grid-template-columns: repeat(2, 18.0769vw);
+    column-gap: 6.4286vw;
+    row-gap: 7.3077vw;
+  }
+  .statsGrid strong { font-size: 3.5165vw; }
+  .statsGrid span { font-size: 1.3187vw; }
+  .fieldLines {
+    width: 65.5531vw;
+    height: 53.8553vw;
+    top: -6.1538vw;
+    right: -18.315vw;
+    left: auto;
+  }
+
   .location {
     --location-left: 7.54vw;
     --location-card-width: 30.9288vw;
