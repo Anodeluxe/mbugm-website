@@ -635,10 +635,10 @@
   .brand {
     height: 3.2967vw;
     gap: .6593vw;
-    font-size: .8791vw;
+    font-size: 1rem;
   }
   .brand img { width: 3.2967vw; height: 3.2967vw; }
-  .navLinks { gap: 1.978vw; font-size: .6857vw; }
+  .navLinks { gap: 1.978vw; font-size: .78rem; }
   .navCta, .navClosed {
     min-height: 2.3077vw;
     padding: 0 1.3187vw;
