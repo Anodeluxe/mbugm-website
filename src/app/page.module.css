@@ -764,7 +764,7 @@
   .aboutIntro h2 {
     max-width: 28.5714vw;
     margin: 1.978vw 0 1.4286vw;
-    font-size: 3vw;
+    font-size: 2.8vw;
   }
   .aboutCaption {
     max-width: 28.5714vw;
@@ -773,7 +773,8 @@
   .aboutBody {
     max-width: none;
     gap: 1.3187vw;
-    font-size: 1.0256vw;
+    font-size: 1.0389vw;
+    line-height: 1.65;
   }
 
   .location {
