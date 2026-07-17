@@ -224,14 +224,19 @@ function GalleryCta({ open }: { open: boolean }) {
     <section id="kegiatan" className={styles.galleryCta} aria-labelledby="cta-title">
       <div className={styles.galleryStrip}>
         {galleryImages.map(([src, alt]) => (
-          <figure key={src}>
+          <button
+            className={styles.galleryItem}
+            key={src}
+            type="button"
+            aria-label={"Tampilkan foto: " + alt}
+          >
             <Image
               src={"/figma/" + src}
               alt={alt}
               fill
               sizes="(max-width: 720px) 90px, (max-width: 1050px) 126px, 7vw"
             />
-          </figure>
+          </button>
         ))}
       </div>
       <div className={styles.ctaCopy}>

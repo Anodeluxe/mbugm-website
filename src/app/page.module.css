@@ -342,21 +342,55 @@
 
 .galleryStrip {
   height: 377px;
-  display: grid;
-  grid-template-columns: repeat(14, minmax(0, 1fr));
+  display: flex;
   gap: 10px;
   background: var(--red);
   overflow: hidden;
 }
 
-.galleryStrip figure {
-  margin: 0;
+.galleryItem {
+  flex: 1 1 0;
   min-width: 0;
   height: 100%;
+  padding: 0;
+  border: 0;
   position: relative;
   overflow: hidden;
+  background: var(--red);
+  cursor: zoom-in;
+  transition-property: flex-grow;
+  transition-duration: 360ms;
+  transition-timing-function: cubic-bezier(.22, 1, .36, 1);
 }
-.galleryStrip img { object-fit: cover; filter: grayscale(1) contrast(1.08); }
+
+.galleryItem:focus-visible {
+  flex-grow: 3;
+  z-index: 1;
+  outline: 2px solid var(--paper);
+  outline-offset: -4px;
+}
+
+.galleryStrip img {
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.08);
+  transform: scale(1);
+  transition-property: filter, transform;
+  transition-duration: 360ms;
+  transition-timing-function: cubic-bezier(.22, 1, .36, 1);
+}
+
+.galleryItem:focus-visible img {
+  filter: grayscale(0) contrast(1);
+  transform: scale(1.012);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .galleryItem:hover { flex-grow: 3; }
+  .galleryItem:hover img {
+    filter: grayscale(0) contrast(1);
+    transform: scale(1.012);
+  }
+}
 
 .ctaCopy { min-height: 743px; padding: 210px 24px 90px; text-align: center; }
 .ctaCopy > p {
@@ -555,7 +589,20 @@
     bottom: auto;
     align-self: center;
   }
-  .galleryStrip { grid-template-columns: repeat(14, 126px); }
+  .galleryStrip {
+    display: grid;
+    grid-template-columns: repeat(14, 126px);
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: none;
+  }
+  .galleryStrip::-webkit-scrollbar { display: none; }
+  .galleryItem {
+    width: 126px;
+    scroll-snap-align: start;
+    cursor: default;
+  }
 }
 
 @media (max-width: 720px) {
@@ -612,6 +659,7 @@
     grid-template-columns: repeat(14, 90px);
     gap: 5px;
   }
+  .galleryItem { width: 90px; }
   .ctaCopy { min-height: 620px; padding: 100px 20px 72px; }
   .ctaCopy > p { margin-bottom: 32px; gap: 10px; font-size: .68rem; }
   .ctaCopy > p span { width: 18px; }
@@ -815,4 +863,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .navCta, .primaryButton, .ctaButton { transition: none; }
+  .galleryItem, .galleryStrip img { transition: none; }
+}
+
+@media (hover: none) {
+  .galleryItem:focus img {
+    filter: grayscale(0) contrast(1);
+    transform: none;
+  }
 }
