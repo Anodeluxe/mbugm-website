@@ -343,7 +343,7 @@
 .galleryStrip {
   height: 377px;
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-columns: repeat(14, minmax(0, 1fr));
   gap: 10px;
   background: var(--red);
   overflow: hidden;
@@ -555,7 +555,7 @@
     bottom: auto;
     align-self: center;
   }
-  .galleryStrip { grid-template-columns: repeat(10, 126px); }
+  .galleryStrip { grid-template-columns: repeat(14, 126px); }
 }
 
 @media (max-width: 720px) {
@@ -609,7 +609,7 @@
   .galleryCta { height: 850px; min-height: 850px; }
   .galleryStrip {
     height: 230px;
-    grid-template-columns: repeat(10, 90px);
+    grid-template-columns: repeat(14, 90px);
     gap: 5px;
   }
   .ctaCopy { min-height: 620px; padding: 100px 20px 72px; }
@@ -806,6 +806,10 @@
     height: 41.4652vw;
     left: calc(var(--location-left) + var(--location-card-width));
     right: auto;
+  }
+  .galleryStrip {
+    height: 19.707vw;
+    gap: .5128vw;
   }
 }
 

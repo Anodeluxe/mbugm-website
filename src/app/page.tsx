@@ -23,6 +23,10 @@ const galleryImages = [
   ["gallery-3676.png", "Dokumentasi penampilan MBUGM"],
   ["gallery-5072.png", "Dokumentasi kegiatan MBUGM"],
   ["gallery-9672.png", "Dokumentasi anggota MBUGM"],
+  ["gallery-3499.png", "Dokumentasi kegiatan Marching Band UGM"],
+  ["gallery-3757.png", "Penampilan anggota Marching Band UGM"],
+  ["gallery-3986.png", "Aksi lapangan Marching Band UGM"],
+  ["gallery-3885.png", "Kebersamaan anggota Marching Band UGM"],
 ] as const;
 
 export default function Page() {
@@ -221,7 +225,12 @@ function GalleryCta({ open }: { open: boolean }) {
       <div className={styles.galleryStrip}>
         {galleryImages.map(([src, alt]) => (
           <figure key={src}>
-            <Image src={"/figma/" + src} alt={alt} fill sizes="(max-width: 720px) 90px, 10vw" />
+            <Image
+              src={"/figma/" + src}
+              alt={alt}
+              fill
+              sizes="(max-width: 720px) 90px, (max-width: 1050px) 126px, 7vw"
+            />
           </figure>
         ))}
       </div>
