@@ -778,31 +778,32 @@
   }
 
   .location {
-    --location-left: 7.54vw;
-    --location-card-width: 30.9288vw;
-    --location-art-width: 58.9102vw;
-    height: 39.2243vw;
+    --location-left: 4.6154vw;
+    --location-card-width: 32.8938vw;
+    --location-art-width: 62.2711vw;
+    height: 41.4652vw;
   }
   .locationCard {
     width: var(--location-card-width);
-    height: 24.5459vw;
+    height: 26.0806vw;
     left: var(--location-left);
-    top: 6.0874vw;
-    border-radius: .9818vw;
+    top: 7.4725vw;
+    border-radius: .9524vw;
   }
-  .locationCopy { padding: 1.1782vw .9818vw; }
+  .mapPlaceholder { height: 75.56%; }
+  .locationCopy { padding: 1.6117vw .9524vw; }
   .locationCopy p {
     margin-bottom: .2946vw;
-    font-size: .6284vw;
+    font-size: .6593vw;
   }
   .locationCopy h2 {
-    margin-bottom: .1964vw;
-    font-size: .864vw;
+    margin-bottom: .2198vw;
+    font-size: .9158vw;
   }
-  .locationCopy address { font-size: .6127vw; }
+  .locationCopy address { font-size: .6227vw; }
   .stadiumArt {
     width: var(--location-art-width);
-    height: 39.2243vw;
+    height: 41.4652vw;
     left: calc(var(--location-left) + var(--location-card-width));
     right: auto;
   }
@@ -811,4 +812,3 @@
 @media (prefers-reduced-motion: reduce) {
   .navCta, .primaryButton, .ctaButton { transition: none; }
 }
-
