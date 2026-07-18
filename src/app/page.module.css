@@ -316,7 +316,7 @@
   box-shadow: 0 5px 10px color-mix(in oklch, var(--ink) 18%, transparent);
 }
 
-.mapPlaceholder { height: 70%; position: relative; background: oklch(0.87 0.004 90); }
+.mapPlaceholder { height: 70%; position: relative; display: block; background: oklch(0.87 0.004 90); }
 .mapPlaceholder img { object-fit: cover; }
 .locationCopy { padding: 24px 20px; }
 .locationCopy p {

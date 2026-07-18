@@ -205,7 +205,13 @@ function Location() {
   return (
     <section id="jadwal" className={styles.location} aria-labelledby="location-title">
       <div className={styles.locationCard}>
-        <div className={styles.mapPlaceholder} aria-hidden="true">
+        <a
+          className={styles.mapPlaceholder}
+          href="https://maps.app.goo.gl/PqbnTN9NqkEcpApLA"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Buka Stadion Pancasila UGM di Google Maps"
+        >
           <Image
             src="/figma/lineart_maps.png"
             alt=""
@@ -213,7 +219,7 @@ function Location() {
             sizes="(max-width: 720px) calc(100vw - 28px), (max-width: 1050px) 560px, (max-width: 1450px) 520px, (max-width: 1819px) 630px, 33vw"
             quality={85}
           />
-        </div>
+        </a>
         <div className={styles.locationCopy}>
           <p>Lokasi</p>
           <h2 id="location-title">Stadion Pancasila UGM</h2>
