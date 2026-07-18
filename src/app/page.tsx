@@ -205,7 +205,15 @@ function Location() {
   return (
     <section id="jadwal" className={styles.location} aria-labelledby="location-title">
       <div className={styles.locationCard}>
-        <div className={styles.mapPlaceholder} aria-hidden="true" />
+        <div className={styles.mapPlaceholder} aria-hidden="true">
+          <Image
+            src="/figma/lineart_maps.png"
+            alt=""
+            fill
+            sizes="(max-width: 720px) calc(100vw - 28px), (max-width: 1050px) 560px, (max-width: 1450px) 520px, (max-width: 1819px) 630px, 33vw"
+            quality={85}
+          />
+        </div>
         <div className={styles.locationCopy}>
           <p>Lokasi</p>
           <h2 id="location-title">Stadion Pancasila UGM</h2>
@@ -234,7 +242,8 @@ function GalleryCta({ open }: { open: boolean }) {
               src={"/figma/" + src}
               alt={alt}
               fill
-              sizes="(max-width: 720px) 90px, (max-width: 1050px) 126px, 7vw"
+              sizes="(max-width: 720px) 90px, (max-width: 1050px) 126px, 30vw"
+              quality={100}
             />
           </button>
         ))}
