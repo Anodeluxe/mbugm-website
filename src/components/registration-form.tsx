@@ -48,6 +48,20 @@ const REQUIRED_PER_STEP: Partial<Record<number, (keyof FormValues)[]>> = {
   3: ["noTelp", "email"],
 };
 
+const FIELD_LABELS: Partial<Record<keyof FormValues, string>> = {
+  nim: "NIM",
+  namaLengkap: "Nama Lengkap",
+  tempatLahir: "Tempat Lahir",
+  tanggalLahir: "Tanggal Lahir",
+  jenisKelamin: "Jenis Kelamin",
+  agama: "Agama",
+  tigaKata: "3 Kata tentang Dirimu",
+  fakultas: "Fakultas",
+  prodi: "Program Studi",
+  noTelp: "Nomor Telepon",
+  email: "Email",
+};
+
 const STEPS = [
   { label: "Data Diri" },
   { label: "Kesehatan & Hobi" },
@@ -61,6 +75,20 @@ const STEPS = [
 ];
 
 const TOTAL_STEPS = STEPS.length;
+
+function todayInputValue() {
+  const today = new Date();
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  return today.toISOString().slice(0, 10);
+}
+
+function isFutureDate(value: string) {
+  return Boolean(value) && value > todayInputValue();
+}
+
+function isValidEmail(value: string) {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
+}
 
 type DraftPayload = {
   values: FormValues;
@@ -160,7 +188,11 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   >({ state: "idle" });
 
   function update(name: keyof FormValues, value: string) {
-    setValues((v) => ({ ...v, [name]: value }));
+    const nextValue = name === "noTelp" || name === "noOrtu"
+      ? value.replace(/\D/g, "")
+      : value;
+
+    setValues((v) => ({ ...v, [name]: nextValue }));
   }
 
   function field(name: keyof FormValues) {
@@ -204,8 +236,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   useEffect(() => {
     if (!draftReady || status.state === "success") return;
 
-    setDraftStatus("saving");
     const timeout = window.setTimeout(() => {
+      setDraftStatus("saving");
       void writeDraft({
         values,
         currentStep,
@@ -221,27 +253,22 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   }, [draftReady, values, currentStep, pasFoto, ktm, status.state]);
 
   function validateStep(step: number): string | null {
-    const required = REQUIRED_PER_STEP[step];
-    if (!required) return null;
-    for (const key of required) {
-      if (!values[key]?.trim()) {
-        const labels: Record<string, string> = {
-          nim: "NIM",
-          namaLengkap: "Nama Lengkap",
-          tempatLahir: "Tempat Lahir",
-          tanggalLahir: "Tanggal Lahir",
-          jenisKelamin: "Jenis Kelamin",
-          agama: "Agama",
-          tigaKata: "3 Kata tentang Dirimu",
-          fakultas: "Fakultas",
-          prodi: "Program Studi",
-          noTelp: "Nomor Telepon",
-          email: "Email",
-        };
-        return `Kolom "${labels[key] ?? key}" wajib diisi.`;
-      }
+    const missingField = REQUIRED_PER_STEP[step]?.find((key) => !values[key]?.trim());
+    if (missingField) {
+      return `Kolom "${FIELD_LABELS[missingField] ?? missingField}" wajib diisi.`;
     }
-    return null;
+
+    const stepValidators: Partial<Record<number, () => string | null>> = {
+      0: () => (isFutureDate(values.tanggalLahir) ? "kamu dari masa depan?" : null),
+      3: () => (values.email.trim() && !isValidEmail(values.email) ? "email tidak valid!" : null),
+      7: () => {
+        if (!pasFoto) return 'Kolom "Pas Foto" wajib diisi.';
+        if (!ktm) return 'Kolom "Foto KTM" wajib diisi.';
+        return null;
+      },
+    };
+
+    return stepValidators[step]?.() ?? null;
   }
 
   function handleNext() {
@@ -403,7 +430,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   <input {...field("tempatLahir")} placeholder="mis. Yogyakarta" />
                 </Field>
                 <Field label="Tanggal Lahir" required>
-                  <input type="date" {...field("tanggalLahir")} />
+                  <input type="date" max={todayInputValue()} {...field("tanggalLahir")} />
                 </Field>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -495,8 +522,10 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               <Field label="Nomor Telepon / WhatsApp" required>
                 <input
                   type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   {...field("noTelp")}
-                  placeholder="mis. 0812-3456-7890"
+                  placeholder="mis. 081234567890"
                   autoComplete="tel"
                 />
               </Field>
@@ -533,7 +562,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 <input {...field("namaOrtu")} placeholder="mis. Bapak/Ibu Santoso" />
               </Field>
               <Field label="Nomor Telepon Orang Tua / Wali">
-                <input type="tel" {...field("noOrtu")} placeholder="mis. 0821-9876-5432" />
+                <input type="tel" inputMode="numeric" pattern="[0-9]*" {...field("noOrtu")} placeholder="mis. 082198765432" />
               </Field>
               <Field label="Alamat Orang Tua / Wali">
                 <textarea {...field("alamatOrtu")} placeholder="Alamat lengkap orang tua / wali" />
@@ -552,23 +581,23 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             <div className="space-y-4">
               <Field label="ID Line">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray text-sm font-body select-none">line:</span>
-                  <input {...field("idLine")} className="pl-11" placeholder="usernamelinekamu" />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray text-sm font-body select-none"></span>
+                  <input {...field("idLine")} className="pl-11" placeholder="idlinekamu" />
                 </div>
               </Field>
               <Field label="Instagram">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray text-sm font-body select-none">@</span>
-                  <input {...field("idInstagram")} className="pl-7" placeholder="usernamekamu" />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray text-sm font-body select-none"></span>
+                  <input {...field("idInstagram")} className="pl-7" placeholder="@usernamekamu" />
                 </div>
               </Field>
               <Field label="Facebook">
-                <input {...field("idFacebook")} placeholder="Nama profil atau username Facebook" />
+                <input {...field("idFacebook")} placeholder="username Facebook" />
               </Field>
               <Field label="Twitter / X">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray text-sm font-body select-none">@</span>
-                  <input {...field("idTwitter")} className="pl-7" placeholder="usernamekamu" />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray text-sm font-body select-none"></span>
+                  <input {...field("idTwitter")} className="pl-7" placeholder="@usernamekamu" />
                 </div>
               </Field>
             </div>
