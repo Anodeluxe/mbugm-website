@@ -891,6 +891,40 @@
     gap: .7326vw;
     font-size: 1.0256vw;
   }
+  .footer {
+    height: 21.978vw;
+    padding: 3.663vw 3.8095vw 1.7582vw;
+    box-sizing: border-box;
+  }
+  .footerTop { gap: 4.3956vw; }
+  .footerBrand > div { gap: .7326vw; }
+  .footerBrand > div span {
+    width: 2.0513vw;
+    height: 2.0513vw;
+    border-radius: .293vw;
+    font-size: .6593vw;
+  }
+  .footerBrand strong { font-size: 1.1722vw; }
+  .footerBrand p {
+    max-width: 29.304vw;
+    margin-top: 1.0256vw;
+    font-size: .8791vw;
+    line-height: 1.5;
+  }
+  .footerColumn {
+    gap: .7326vw;
+    font-size: .8791vw;
+  }
+  .footerColumn p {
+    margin-bottom: .3663vw;
+    font-size: .7326vw;
+  }
+  .footerBottom {
+    margin-top: 3.663vw;
+    padding-top: 1.0256vw;
+    gap: 1.4652vw;
+    font-size: .7326vw;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
