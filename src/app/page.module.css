@@ -859,6 +859,38 @@
     height: 19.707vw;
     gap: .5128vw;
   }
+  .galleryCta { height: 58.3883vw; }
+  .ctaCopy {
+    height: 38.6813vw;
+    min-height: 0;
+    padding: 13.9194vw 1.7582vw 4vw;
+    box-sizing: border-box;
+  }
+  .ctaCopy > p {
+    margin-bottom: 1.6117vw;
+    gap: 1.0256vw;
+    font-size: .695vw;
+  }
+  .ctaCopy > p span { width: 1.6117vw; }
+  .ctaCopy h2 {
+    max-width: 50vw;
+    font-size: 3vw;
+  }
+  .ctaCopy > div {
+    max-width: 44.3223vw;
+    margin: 2.4908vw auto 2.6374vw;
+    font-size: 1.0256vw;
+    line-height: 1.55;
+  }
+  .ctaButton, .ctaDisabled {
+    box-sizing: border-box;
+    min-width: 14.7253vw;
+    min-height: 3.663vw;
+    padding: 0 1.6484vw;
+    border-radius: .3663vw;
+    gap: .7326vw;
+    font-size: 1.0256vw;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
