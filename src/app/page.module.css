@@ -316,8 +316,10 @@
   box-shadow: 0 5px 10px color-mix(in oklch, var(--ink) 18%, transparent);
 }
 
-.mapPlaceholder { height: 70%; position: relative; display: block; background: oklch(0.87 0.004 90); }
-.mapPlaceholder img { object-fit: cover; }
+.mapPlaceholder { height: 70%; position: relative; background: oklch(0.87 0.004 90); }
+.mapPlaceholder iframe, .mapFallback { width: 100%; height: 100%; border: 0; }
+.mapFallback { position: relative; display: block; }
+.mapFallback img { object-fit: cover; }
 .locationCopy { padding: 24px 20px; }
 .locationCopy p {
   margin: 0 0 6px;
@@ -359,7 +361,7 @@
   overflow: hidden;
   background: var(--red);
   cursor: zoom-in;
-  transition-property: flex-grow;
+  transition-property: flex-grow, height;
   transition-duration: 360ms;
   transition-timing-function: cubic-bezier(.22, 1, .36, 1);
 }
@@ -385,8 +387,18 @@
   transform: scale(1.012);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .galleryItem:hover { flex-grow: 3; }
+@media (min-width: 1051px) and (hover: hover) and (pointer: fine) {
+  .galleryItem:hover {
+    height: 150%;
+    flex-grow: 5.5;
+    z-index: 2;
+  }
+  .galleryItem:hover + .galleryItem,
+  .galleryItem:has(+ .galleryItem:hover) {
+    height: 122%;
+    flex-grow: 3.25;
+    z-index: 1;
+  }
   .galleryItem:hover img {
     filter: grayscale(0) contrast(1);
     transform: scale(1.012);
@@ -859,6 +871,18 @@
   .galleryStrip {
     height: 19.707vw;
     gap: .5128vw;
+    overflow: visible;
+  }
+  .galleryItem:focus-visible {
+    height: 150%;
+    flex-grow: 5.5;
+    z-index: 2;
+  }
+  .galleryItem:focus-visible + .galleryItem,
+  .galleryItem:has(+ .galleryItem:focus-visible) {
+    height: 122%;
+    flex-grow: 3.25;
+    z-index: 1;
   }
   .galleryCta { height: 58.3883vw; }
   .ctaCopy {

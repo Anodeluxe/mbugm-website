@@ -4,6 +4,10 @@ import { config, isRegistrationOpen } from "@/lib/config";
 import styles from "./page.module.css";
 
 const registrationOpen = isRegistrationOpen();
+const googleMapsEmbedKey = process.env.GOOGLE_MAPS_EMBED_API_KEY;
+const googleMapsEmbedUrl = googleMapsEmbedKey
+  ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(googleMapsEmbedKey)}&q=Stadion+Pancasila+UGM&zoom=17&language=id&region=ID`
+  : null;
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
@@ -205,21 +209,33 @@ function Location() {
   return (
     <section id="jadwal" className={styles.location} aria-labelledby="location-title">
       <div className={styles.locationCard}>
-        <a
-          className={styles.mapPlaceholder}
-          href="https://maps.app.goo.gl/PqbnTN9NqkEcpApLA"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Buka Stadion Pancasila UGM di Google Maps"
-        >
-          <Image
-            src="/figma/lineart_maps.png"
-            alt=""
-            fill
-            sizes="(max-width: 720px) calc(100vw - 28px), (max-width: 1050px) 560px, (max-width: 1450px) 520px, (max-width: 1819px) 630px, 33vw"
-            quality={85}
-          />
-        </a>
+        <div className={styles.mapPlaceholder}>
+          {googleMapsEmbedUrl ? (
+            <iframe
+              src={googleMapsEmbedUrl}
+              title="Peta Stadion Pancasila UGM"
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          ) : (
+            <a
+              className={styles.mapFallback}
+              href="https://maps.app.goo.gl/PqbnTN9NqkEcpApLA"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Buka Stadion Pancasila UGM di Google Maps"
+            >
+              <Image
+                src="/figma/lineart_maps.png"
+                alt=""
+                fill
+                sizes="(max-width: 720px) calc(100vw - 28px), (max-width: 1050px) 560px, (max-width: 1450px) 520px, (max-width: 1819px) 630px, 33vw"
+                quality={85}
+              />
+            </a>
+          )}
+        </div>
         <div className={styles.locationCopy}>
           <p>Lokasi</p>
           <h2 id="location-title">Stadion Pancasila UGM</h2>

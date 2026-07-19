@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    qualities: [100, 100],
+    qualities: [100, 100, 85],
   },
 
   // Native/Node packages that must NOT be bundled by Next.
