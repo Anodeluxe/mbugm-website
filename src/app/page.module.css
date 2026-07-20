@@ -362,7 +362,7 @@
   background: var(--red);
   cursor: zoom-in;
   transition-property: flex-grow, height;
-  transition-duration: 360ms;
+  transition-duration: 1520ms;
   transition-timing-function: cubic-bezier(.22, 1, .36, 1);
 }
 
@@ -378,7 +378,7 @@
   filter: grayscale(1) contrast(1.08);
   transform: scale(1);
   transition-property: filter, transform;
-  transition-duration: 360ms;
+  transition-duration: 1520ms;
   transition-timing-function: cubic-bezier(.22, 1, .36, 1);
 }
 
