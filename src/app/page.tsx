@@ -83,7 +83,7 @@ function Hero({ open }: { open: boolean }) {
     <HeroParallax className={styles.hero}>
       <div className={styles.heroCopy}>
         <p className={styles.eyebrow}><span />Est. 1979</p>
-        <h1 id="hero-title">Bergabung dengan kami !</h1>
+        <h1 id="hero-title">Bergabung dengan kami!</h1>
         <p className={styles.heroLead}>
           Lebih dari empat dekade mencetak musisi, penari, dan pemimpin. Satu komunitas,
           satu irama. Kekeluargaan yang bertahan seumur hidup.

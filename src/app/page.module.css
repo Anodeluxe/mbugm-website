@@ -9,6 +9,8 @@
   background: var(--paper);
   color: var(--ink);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .header {
@@ -119,6 +121,10 @@
   letter-spacing: 0;
 }
 
+.hero h1, .aboutIntro h2, .ctaCopy h2 { text-wrap: balance; }
+.heroLead, .aboutCaption, .aboutBody p, .ctaCopy > div,
+.locationCopy address, .footerBrand p { text-wrap: pretty; }
+
 .heroLead {
   width: 666px;
   margin: 18px 0 0;
@@ -182,6 +188,13 @@
 }
 .secondaryButton:hover { background: var(--ink); color: var(--paper); }
 .disabledButton { background: oklch(0.84 0.018 90); color: var(--muted); }
+
+.navCta:active, .primaryButton:active, .secondaryButton:active, .ctaButton:active {
+  transform: scale(.96);
+}
+
+.navCta:focus-visible, .primaryButton:focus-visible,
+.secondaryButton:focus-visible, .ctaButton:focus-visible { outline-color: var(--ink); }
 
 .photo {
   margin: 0;
@@ -642,66 +655,110 @@
   .brand { height: 46px; gap: 8px; font-size: .78rem; }
   .brand img { width: 46px; height: 46px; }
   .navLinks > a:not(.navCta), .navClosed { display: none; }
-  .navCta { min-height: 40px; padding: 0 14px; font-size: .72rem; }
+  .navCta { min-height: 44px; padding: 0 12px; font-size: .8rem; }
 
-  .hero { padding: 64px 18px 0; }
-  .hero h1 { font-size: clamp(3.2rem, 16vw, 4rem); line-height: .98; }
-  .heroLead { margin-top: 24px; font-size: .95rem; }
-  .registrationPeriod { margin-top: 30px; }
+  .hero { padding: 56px 18px 0; }
+  .heroCopy, .hero h1, .heroLead { width: 100%; max-width: 100%; }
+  .hero h1 { font-size: clamp(2.9rem, 14vw, 3.6rem); line-height: 1.02; }
+  .heroLead { margin-top: 22px; font-size: 1rem; line-height: 1.65; }
+  .registrationPeriod { margin: 28px 0 0; gap: 12px; }
+  .registrationPeriod > span { width: 4px; }
+  .registrationPeriod p { font-size: .75rem; letter-spacing: .1em; }
+  .registrationPeriod time { font-size: .9rem; }
   .heroActions {
-    margin-top: 44px;
+    margin-top: 36px;
     display: grid;
     grid-template-columns: 1fr;
+    gap: 12px;
   }
-  .primaryButton, .secondaryButton, .disabledButton { width: 100%; min-height: 54px; }
+  .primaryButton, .secondaryButton, .disabledButton {
+    width: 100%;
+    min-height: 52px;
+    font-size: 1rem;
+  }
 
-  .heroCollage { height: 540px; margin-top: 56px; }
+  .heroCollage { height: 520px; margin-top: 48px; }
   .arena { width: 76%; height: 38%; }
   .flag { width: 35%; height: 46%; top: 16%; }
   .percussion { width: 48%; height: 42%; top: 47%; right: 3%; }
   .brass { width: 62%; height: 34%; top: 66%; left: 4%; }
   .drillDots { width: 60%; left: 4%; }
 
-  .stats { min-height: 620px; }
+  .stats { height: auto; min-height: 520px; }
   .statsGrid {
     width: calc(100% - 36px);
-    padding-top: 88px;
+    padding: 72px 0 88px;
     margin: 0 auto;
     column-gap: 12px;
-    row-gap: 110px;
+    row-gap: 80px;
   }
-  .statsGrid strong { font-size: 3.3rem; }
-  .statsGrid span { max-width: 140px; font-size: .78rem; }
+  .statsGrid strong { font-size: 3rem; }
+  .statsGrid span { max-width: 140px; font-size: .8rem; line-height: 1.35; }
   .fieldLines { display: none; }
 
-  .about { padding: 82px 20px; gap: 44px; }
-  .aboutIntro h2 { margin-top: 28px; font-size: 2.7rem; }
-  .aboutBody { gap: 20px; font-size: .94rem; line-height: 1.72; }
+  .about { padding: 72px 18px; gap: 36px; }
+  .aboutIntro h2 {
+    margin: 24px 0 22px;
+    font-size: clamp(2.25rem, 11vw, 2.7rem);
+    line-height: 1.08;
+  }
+  .aboutBody { gap: 18px; font-size: .96rem; line-height: 1.7; }
 
-  .location { padding: 54px 14px 0; }
-  .locationCard { height: 390px; border-radius: 12px; }
-  .mapPlaceholder { height: 64%; }
+  .location { padding: 48px 14px 0; }
+  .locationCard { height: auto; min-height: 380px; border-radius: 12px; }
+  .mapPlaceholder { height: 236px; }
   .locationCopy { padding: 18px 16px; }
+  .locationCopy address { font-size: .85rem; line-height: 1.45; }
   .stadiumArt { width: 145vw; margin-top: 20px; }
 
-  .galleryCta { height: 850px; min-height: 850px; }
+  .galleryCta { height: auto; min-height: 0; }
   .galleryStrip {
     height: 230px;
     grid-template-columns: repeat(14, 90px);
     gap: 0;
   }
-  .galleryItem { width: 90px; border-right-width: 5px; }
-  .ctaCopy { min-height: 620px; padding: 100px 20px 72px; }
-  .ctaCopy > p { margin-bottom: 32px; gap: 10px; font-size: .68rem; }
+  .galleryItem { width: 90px; border-right-width: 5px; transition: none; }
+  .galleryStrip img {
+    transition-property: filter;
+    transition-duration: 240ms;
+  }
+  .ctaCopy { min-height: 0; padding: 80px 18px 64px; }
+  .ctaCopy > p {
+    margin-bottom: 26px;
+    gap: 10px;
+    color: var(--ivory);
+    font-size: .75rem;
+    line-height: 1.5;
+    letter-spacing: .12em;
+  }
   .ctaCopy > p span { width: 18px; }
-  .ctaCopy h2 { font-size: 2.8rem; }
-  .ctaCopy > div { margin: 28px auto 36px; font-size: .96rem; }
-  .ctaButton, .ctaDisabled { min-width: 0; width: 100%; }
+  .ctaCopy h2 { font-size: clamp(2.25rem, 11vw, 2.8rem); line-height: 1.08; }
+  .ctaCopy > div { margin: 24px auto 32px; font-size: 1rem; line-height: 1.6; }
+  .ctaButton, .ctaDisabled {
+    min-width: 0;
+    width: 100%;
+    min-height: 56px;
+    font-size: 1rem;
+  }
 
-  .footer { min-height: auto; padding: 50px 22px 24px; }
-  .footerTop { grid-template-columns: 1fr 1fr; gap: 38px 30px; }
+  .footer { height: auto; min-height: auto; padding: 48px 20px 24px; }
+  .footerTop { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 32px 16px; }
   .footerBrand { grid-column: 1 / -1; }
-  .footerBottom { margin-top: 56px; flex-direction: column; }
+  .footerBrand p { margin-top: 14px; font-size: .88rem; line-height: 1.6; }
+  .footerColumn { gap: 4px; font-size: .85rem; overflow-wrap: anywhere; }
+  .footerColumn p {
+    margin-bottom: 6px;
+    color: color-mix(in oklch, var(--paper) 60%, var(--ink));
+  }
+  .footerColumn a { min-height: 44px; display: inline-flex; align-items: center; }
+  .footerBottom {
+    margin-top: 40px;
+    padding-top: 20px;
+    flex-direction: column;
+    gap: 10px;
+    color: color-mix(in oklch, var(--paper) 55%, var(--ink));
+    line-height: 1.6;
+  }
 }
 
 @media (min-width: 1051px) {
@@ -974,6 +1031,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .navCta, .primaryButton, .ctaButton { transition: none; }
+  .navCta:active, .primaryButton:active, .secondaryButton:active, .ctaButton:active {
+    transform: none;
+  }
   .galleryItem, .galleryStrip img { transition: none; }
   .arena, .flag, .percussion, .brass, .family, .guard, .drillDots {
     transform: none;
