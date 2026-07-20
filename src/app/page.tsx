@@ -1,13 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import { HeroParallax } from "@/components/hero-parallax";
 import { config, isRegistrationOpen } from "@/lib/config";
 import styles from "./page.module.css";
 
 const registrationOpen = isRegistrationOpen();
-const googleMapsEmbedKey = process.env.GOOGLE_MAPS_EMBED_API_KEY;
-const googleMapsEmbedUrl = googleMapsEmbedKey
-  ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(googleMapsEmbedKey)}&q=Stadion+Pancasila+UGM&zoom=17&language=id&region=ID`
-  : null;
+const googleMapsEmbedUrl =
+  "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3031.8075272304286!2d110.3848214!3d-7.769798100000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7a59b469fe8cd7%3A0xc76dc4d1ec7572e2!2sStadion%20Pancasila%20UGM%20%E2%80%94%20Universitas%20Gajah%20Mada!5e1!3m2!1sid!2sid!4v1784517950509!5m2!1sid!2sid";
+const googleMapsUrl = "https://maps.app.goo.gl/PqbnTN9NqkEcpApLA";
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
@@ -81,7 +81,7 @@ function Header({ open }: { open: boolean }) {
 
 function Hero({ open }: { open: boolean }) {
   return (
-    <section className={styles.hero} aria-labelledby="hero-title">
+    <HeroParallax className={styles.hero}>
       <div className={styles.heroCopy}>
         <p className={styles.eyebrow}><span />Est. 1979</p>
         <h1 id="hero-title">Bergabung dengan kami !</h1>
@@ -120,7 +120,7 @@ function Hero({ open }: { open: boolean }) {
         <HeroPhoto className={styles.family} src="hero-family.png" alt="" />
         <HeroPhoto className={styles.guard} src="hero-guard.png" alt="" />
       </div>
-    </section>
+    </HeroParallax>
   );
 }
 
@@ -210,36 +210,28 @@ function Location() {
     <section id="jadwal" className={styles.location} aria-labelledby="location-title">
       <div className={styles.locationCard}>
         <div className={styles.mapPlaceholder}>
-          {googleMapsEmbedUrl ? (
-            <iframe
-              src={googleMapsEmbedUrl}
-              title="Peta Stadion Pancasila UGM"
-              loading="lazy"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
-          ) : (
-            <a
-              className={styles.mapFallback}
-              href="https://maps.app.goo.gl/PqbnTN9NqkEcpApLA"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Buka Stadion Pancasila UGM di Google Maps"
-            >
-              <Image
-                src="/figma/lineart_maps.png"
-                alt=""
-                fill
-                sizes="(max-width: 720px) calc(100vw - 28px), (max-width: 1050px) 560px, (max-width: 1450px) 520px, (max-width: 1819px) 630px, 33vw"
-                quality={85}
-              />
-            </a>
-          )}
+          <iframe
+            src={googleMapsEmbedUrl}
+            title="Peta Stadion Pancasila UGM"
+            loading="lazy"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
         </div>
         <div className={styles.locationCopy}>
           <p>Lokasi</p>
           <h2 id="location-title">Stadion Pancasila UGM</h2>
-          <address>Jl. Pancasila, Caturtunggal, Kec. Depok, Kabupaten Sleman, D.I. Yogyakarta</address>
+          <div className={styles.locationDetails}>
+            <address>Jl. Pancasila, Caturtunggal, Kec. Depok, Kabupaten Sleman, D.I. Yogyakarta</address>
+            <a
+              className={styles.directionsLink}
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Buka di Maps <span aria-hidden="true">↗</span>
+            </a>
+          </div>
         </div>
       </div>
       <div className={styles.stadiumArt} aria-hidden="true">
