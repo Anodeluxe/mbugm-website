@@ -322,40 +322,22 @@
 
 .mapPlaceholder { height: 70%; position: relative; background: oklch(0.87 0.004 90); }
 .mapPlaceholder iframe { width: 100%; height: 100%; border: 0; }
-.locationCopy { padding: 24px 20px; }
+.locationCopy { padding: 20px; }
 .locationCopy p {
-  margin: 0 0 6px;
+  margin: 0 0 3px;
   color: var(--muted);
   text-transform: uppercase;
   font-size: .8rem;
   font-weight: 800;
   letter-spacing: .12em;
 }
-.locationCopy h2 { margin: 0 0 4px; font-size: 1.1rem; font-weight: 800; }
-.locationDetails { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.locationCopy h2 { margin: 0 0 2px; font-size: 1.1rem; font-weight: 800; }
 .locationCopy address {
-  max-width: 430px;
   color: var(--muted);
   font-size: .78rem;
   font-style: normal;
-  line-height: 1.45;
+  line-height: 1.35;
 }
-.directionsLink {
-  flex: 0 0 auto;
-  min-height: 36px;
-  padding: 0 13px;
-  border: 1px solid color-mix(in oklch, var(--red) 28%, transparent);
-  border-radius: 5px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--red-dark);
-  font-size: .75rem;
-  font-weight: 800;
-  transition: background 180ms cubic-bezier(.16, 1, .3, 1), color 180ms cubic-bezier(.16, 1, .3, 1);
-}
-.directionsLink:hover { background: var(--red-dark); color: var(--paper); }
-.directionsLink:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 
 .stadiumArt {
   width: 1200px;
@@ -696,9 +678,7 @@
   .location { padding: 54px 14px 0; }
   .locationCard { height: 390px; border-radius: 12px; }
   .mapPlaceholder { height: 64%; }
-  .locationCopy { padding: 20px 16px; }
-  .locationDetails { align-items: center; }
-  .locationCopy address { max-width: 58%; }
+  .locationCopy { padding: 18px 16px; }
   .stadiumArt { width: 145vw; margin-top: 20px; }
 
   .galleryCta { height: 850px; min-height: 850px; }
@@ -887,24 +867,16 @@
     border-radius: .9524vw;
   }
   .mapPlaceholder { height: 75.56%; }
-  .locationCopy { padding: 1.6117vw .9524vw; }
+  .locationCopy { padding: 1.3187vw .9524vw; }
   .locationCopy p {
-    margin-bottom: .2946vw;
+    margin-bottom: .1648vw;
     font-size: .6593vw;
   }
   .locationCopy h2 {
-    margin-bottom: .2198vw;
+    margin-bottom: .1099vw;
     font-size: .9158vw;
   }
   .locationCopy address { font-size: .6227vw; }
-  .locationDetails { gap: .9524vw; }
-  .directionsLink {
-    min-height: 1.978vw;
-    padding: 0 .7326vw;
-    border-radius: .2747vw;
-    gap: .3663vw;
-    font-size: .6227vw;
-  }
   .stadiumArt {
     width: var(--location-art-width);
     height: 41.4652vw;
@@ -996,7 +968,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .navCta, .primaryButton, .ctaButton, .directionsLink { transition: none; }
+  .navCta, .primaryButton, .ctaButton { transition: none; }
   .galleryItem, .galleryStrip img { transition: none; }
   .arena, .flag, .percussion, .brass, .family, .guard, .drillDots {
     transform: none;
