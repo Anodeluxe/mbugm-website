@@ -55,7 +55,7 @@ const FIELD_LABELS: Partial<Record<keyof FormValues, string>> = {
   tanggalLahir: "Tanggal Lahir",
   jenisKelamin: "Jenis Kelamin",
   agama: "Agama",
-  tigaKata: "3 Kata tentang Dirimu",
+  tigaKata: "Sebutkan 3 sifat yang menggambarkan dirimu",
   fakultas: "Fakultas",
   prodi: "Program Studi",
   noTelp: "Nomor Telepon",
@@ -479,7 +479,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               <Field label="Hobi">
                 <input {...field("hobi")} placeholder="mis. membaca, bermain musik, olahraga" />
               </Field>
-              <Field label="3 Kata yang Menggambarkan Dirimu" required>
+              <Field label="Sebutkan 3 sifat yang menggambarkan dirimu" required>
                 <input
                   {...field("tigaKata")}
                   placeholder="mis. tekun, ramah, kreatif"
