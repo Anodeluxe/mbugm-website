@@ -15,6 +15,17 @@
   --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.75rem;
+}
+
+@media (max-width: 720px) {
+  html {
+    scroll-padding-top: 5.25rem;
+  }
+}
+
 /* Force light mode — no dark-mode flip */
 body {
   background: #FBFAF4;
