@@ -2,6 +2,7 @@
 // Server component: queries sessions, guards with registration window check.
 
 import Link from "next/link";
+import { count, eq } from "drizzle-orm";
 import { RegistrationForm } from "@/components/registration-form";
 import { config, isRegistrationOpen } from "@/lib/config";
 
@@ -39,8 +40,20 @@ export default async function DaftarPage() {
 
   const sessions = useLocalFormMock
     ? [
-        { id: 1, dayLabel: "Local Test", sessionNo: 1 },
-        { id: 2, dayLabel: "Local Test", sessionNo: 2 },
+        { id: 1, dayLabel: "Senin, 7 September 2026", sessionNo: 1, quota: 40, bookedCount: 0 },
+        { id: 2, dayLabel: "Senin, 7 September 2026", sessionNo: 2, quota: 40, bookedCount: 0 },
+        { id: 3, dayLabel: "Selasa, 8 September 2026", sessionNo: 1, quota: 40, bookedCount: 0 },
+        { id: 4, dayLabel: "Selasa, 8 September 2026", sessionNo: 2, quota: 40, bookedCount: 0 },
+        { id: 5, dayLabel: "Rabu, 9 September 2026", sessionNo: 1, quota: 40, bookedCount: 0 },
+        { id: 6, dayLabel: "Rabu, 9 September 2026", sessionNo: 2, quota: 40, bookedCount: 0 },
+        { id: 7, dayLabel: "Kamis, 10 September 2026", sessionNo: 1, quota: 40, bookedCount: 0 },
+        { id: 8, dayLabel: "Kamis, 10 September 2026", sessionNo: 2, quota: 40, bookedCount: 0 },
+        { id: 9, dayLabel: "Jumat, 11 September 2026", sessionNo: 1, quota: 40, bookedCount: 0 },
+        { id: 10, dayLabel: "Jumat, 11 September 2026", sessionNo: 2, quota: 40, bookedCount: 0 },
+        { id: 11, dayLabel: "Sabtu, 12 September 2026", sessionNo: 1, quota: 40, bookedCount: 0 },
+        { id: 12, dayLabel: "Sabtu, 12 September 2026", sessionNo: 2, quota: 40, bookedCount: 0 },
+        { id: 13, dayLabel: "Minggu, 13 September 2026", sessionNo: 1, quota: 40, bookedCount: 0 },
+        { id: 14, dayLabel: "Minggu, 13 September 2026", sessionNo: 2, quota: 40, bookedCount: 0 },
       ]
     : await getSessions();
 
@@ -88,7 +101,7 @@ export default async function DaftarPage() {
 }
 
 async function getSessions() {
-  const [{ db }, { sessions: sessionsTable }] = await Promise.all([
+  const [{ db }, { applicants, sessions: sessionsTable }] = await Promise.all([
     import("@/server/db"),
     import("@/server/db/schema"),
   ]);
@@ -98,7 +111,16 @@ async function getSessions() {
       id: sessionsTable.id,
       dayLabel: sessionsTable.dayLabel,
       sessionNo: sessionsTable.sessionNo,
+      quota: sessionsTable.quota,
+      bookedCount: count(applicants.id),
     })
     .from(sessionsTable)
-    .orderBy(sessionsTable.dayLabel, sessionsTable.sessionNo);
+    .leftJoin(applicants, eq(applicants.sessionId, sessionsTable.id))
+    .groupBy(
+      sessionsTable.id,
+      sessionsTable.dayLabel,
+      sessionsTable.sessionNo,
+      sessionsTable.quota,
+    )
+    .orderBy(sessionsTable.id);
 }

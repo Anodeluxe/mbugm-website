@@ -12,6 +12,10 @@ import imageCompression from "browser-image-compression";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { submitApplication } from "@/server/actions/submit-application";
 import {
+  getPlacementSessionTime,
+  groupPlacementSessions,
+} from "@/lib/placement-sessions";
+import {
   AGAMA_OPTIONS,
   JENIS_KELAMIN_OPTIONS,
   GOLONGAN_DARAH_OPTIONS,
@@ -19,7 +23,13 @@ import {
   JENIS_TEMPAT_OPTIONS,
 } from "@/lib/constants";
 
-type SessionOption = { id: number; dayLabel: string; sessionNo: number };
+type SessionOption = {
+  id: number;
+  dayLabel: string;
+  sessionNo: number;
+  quota: number;
+  bookedCount: number;
+};
 
 const INITIAL = {
   nim: "", namaLengkap: "", namaPanggilan: "", tempatLahir: "", tanggalLahir: "",
@@ -46,6 +56,7 @@ const REQUIRED_PER_STEP: Partial<Record<number, (keyof FormValues)[]>> = {
   1: ["tigaKata"],
   2: ["fakultas", "prodi"],
   3: ["noTelp", "email"],
+  8: ["sessionId"],
 };
 
 const FIELD_LABELS: Partial<Record<keyof FormValues, string>> = {
@@ -60,6 +71,7 @@ const FIELD_LABELS: Partial<Record<keyof FormValues, string>> = {
   prodi: "Program Studi",
   noTelp: "Nomor Telepon",
   email: "Email",
+  sessionId: "Sesi Penempatan",
 };
 
 const STEPS = [
@@ -179,6 +191,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const [stepError, setStepError] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const sessionDays = groupPlacementSessions(sessions);
+  const selectedSession = sessions.find((session) => String(session.id) === values.sessionId);
 
   const [status, setStatus] = useState<
     | { state: "idle" }
@@ -264,6 +278,13 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       7: () => {
         if (!pasFoto) return 'Kolom "Pas Foto" wajib diisi.';
         if (!ktm) return 'Kolom "Foto KTM" wajib diisi.';
+        return null;
+      },
+      8: () => {
+        if (!selectedSession) return "Pilih sesi penempatan yang tersedia.";
+        if (selectedSession.bookedCount >= selectedSession.quota) {
+          return "Sesi yang dipilih sudah penuh. Silakan pilih sesi lain.";
+        }
         return null;
       },
     };
@@ -683,19 +704,83 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           <fieldset>
             <legend>Penempatan & Verifikasi</legend>
             <div className="space-y-6">
-              <Field label="Sesi Penempatan" required>
-                <select {...field("sessionId")}>
-                  <option value="">-- Pilih Sesi --</option>
-                  {sessions.map((s) => (
-                    <option key={s.id} value={String(s.id)}>
-                      {s.dayLabel} ─ Sesi {s.sessionNo}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-warm-gray mt-1 font-body">
-                  Pilih sesi penempatan yang sesuai dengan jadwalmu.
+              <div>
+                <p id="session-picker-label" className="font-body text-sm font-semibold text-ink">
+                  Sesi Penempatan
+                  <span className="text-crimson ml-1" aria-label="wajib diisi">*</span>
                 </p>
-              </Field>
+                <p className="mt-1 text-sm leading-relaxed text-warm-gray text-pretty">
+                  Pilih satu hari dan sesi yang paling sesuai. Kapasitas maksimal 40 peserta per sesi.
+                </p>
+
+                {sessionDays.length > 0 ? (
+                  <div
+                    className="mt-5 space-y-5"
+                    role="radiogroup"
+                    aria-labelledby="session-picker-label"
+                  >
+                    {sessionDays.map((day) => (
+                      <section key={day.dayLabel} aria-label={day.dayLabel}>
+                        <h3 className="font-body text-sm font-bold text-ink mb-2">
+                          {day.dayLabel}
+                        </h3>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {day.sessions.map((session) => {
+                            const selected = values.sessionId === String(session.id);
+                            const full = session.bookedCount >= session.quota;
+
+                            return (
+                              <button
+                                key={session.id}
+                                type="button"
+                                role="radio"
+                                aria-checked={selected}
+                                disabled={full}
+                                onClick={() => update("sessionId", String(session.id))}
+                                className={`min-h-24 rounded-lg px-4 py-3.5 text-left font-body transition-[background-color,box-shadow,transform] duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100 ${
+                                  selected
+                                    ? "bg-crimson/5 shadow-[0_0_0_2px_#AD2829]"
+                                    : "bg-paper shadow-[0_0_0_1px_rgba(34,30,27,0.14)] hover:bg-parchment/25 hover:shadow-[0_0_0_1px_rgba(173,40,41,0.5)] active:scale-[0.96]"
+                                }`}
+                              >
+                                <span className="flex items-start justify-between gap-4">
+                                  <span>
+                                    <span className="block text-sm font-bold text-ink">
+                                      Sesi {session.sessionNo}
+                                    </span>
+                                    <span className="mt-1 block text-sm text-warm-gray tabular-nums">
+                                      {getPlacementSessionTime(day.dayLabel, session.sessionNo)}
+                                    </span>
+                                  </span>
+                                  <span
+                                    className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full transition-[background-color,box-shadow] duration-200 ${
+                                      selected
+                                        ? "bg-crimson text-paper shadow-[0_0_0_1px_#AD2829]"
+                                        : "bg-paper text-transparent shadow-[0_0_0_1px_rgba(34,30,27,0.28)]"
+                                    }`}
+                                    aria-hidden="true"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  </span>
+                                </span>
+                                <span className={`mt-3 block text-xs font-semibold tabular-nums ${full ? "text-crimson" : "text-warm-gray"}`}>
+                                  {session.bookedCount}/{session.quota} peserta{full ? " • Penuh" : ""}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-lg bg-parchment/40 px-4 py-3 text-sm text-warm-gray">
+                    Belum ada sesi penempatan yang tersedia.
+                  </p>
+                )}
+              </div>
 
               {/* Summary review */}
               <div className="rounded-xl border border-border bg-parchment/30 p-5 space-y-2">
@@ -707,12 +792,18 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   { label: "NIM", value: values.nim },
                   { label: "Prodi", value: [values.jenjangStudi, values.prodi, values.fakultas].filter(Boolean).join(" ─ ") },
                   { label: "Email", value: values.email },
+                  {
+                    label: "Sesi",
+                    value: selectedSession
+                      ? `${selectedSession.dayLabel} • Sesi ${selectedSession.sessionNo} • ${getPlacementSessionTime(selectedSession.dayLabel, selectedSession.sessionNo)}`
+                      : "─",
+                  },
                   { label: "Pas Foto", value: pasFoto?.name ?? "─" },
                   { label: "KTM", value: ktm?.name ?? "─" },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex gap-3 text-sm font-body">
                     <span className="text-warm-gray w-24 shrink-0">{label}</span>
-                    <span className="text-ink font-medium truncate">{value || "─"}</span>
+                    <span className="min-w-0 text-ink font-medium break-words">{value || "─"}</span>
                   </div>
                 ))}
               </div>

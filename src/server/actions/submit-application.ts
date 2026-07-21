@@ -2,10 +2,10 @@
 
 "use server";
 
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { db } from "@/server/db";
-import { applicants } from "@/server/db/schema";
+import { applicants, sessions } from "@/server/db/schema";
 import { applicantSchema } from "@/server/validation/applicant";
 import { verifyTurnstileToken } from "@/server/turnstile";
 import { syncApplicantToGoogle } from "@/server/google/sync";
@@ -102,6 +102,23 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
     return { ok: false, error: "NIM ini sudah terdaftar." };
   }
 
+  const selectedSession = await db.query.sessions.findFirst({
+    where: eq(sessions.id, data.sessionId),
+  });
+  if (!selectedSession) {
+    return { ok: false, error: "Sesi penempatan tidak ditemukan. Silakan pilih sesi lain." };
+  }
+
+  // ponytail: count-then-insert can race on the final slot; use an atomic
+  // reservation or row lock if simultaneous high-volume submits become likely.
+  const [{ value: bookedCount }] = await db
+    .select({ value: count() })
+    .from(applicants)
+    .where(eq(applicants.sessionId, data.sessionId));
+  if (bookedCount >= selectedSession.quota) {
+    return { ok: false, error: "Sesi penempatan sudah penuh. Silakan pilih sesi lain." };
+  }
+
   // 7. INSERT (full row returned for the sync).
   let inserted;
   try {
@@ -148,7 +165,7 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
         unitSebelumnya: data.unitSebelumnya ?? null,
         section: data.section ?? null,
         kemampuanAlat: data.kemampuanAlat ?? null,
-        sessionId: data.sessionId ?? null,
+        sessionId: data.sessionId,
       })
       .returning();
     inserted = row;

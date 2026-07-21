@@ -104,7 +104,7 @@ export const applicantSchema = z.object({
   // --- Penempatan ---
   sessionId: z.preprocess(
     emptyToUndefined,
-    z.coerce.number().int().optional(),
+    z.coerce.number().int().positive("Sesi penempatan wajib dipilih"),
   ),
 });
 
