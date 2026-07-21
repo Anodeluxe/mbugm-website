@@ -1,9 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import { HeroParallax } from "@/components/hero-parallax";
+import { SiteHeader } from "@/components/site-header";
 import { config, isRegistrationOpen } from "@/lib/config";
 import styles from "./page.module.css";
 
 const registrationOpen = isRegistrationOpen();
+const googleMapsEmbedUrl =
+  "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3031.8075272304286!2d110.3848214!3d-7.769798100000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7a59b469fe8cd7%3A0xc76dc4d1ec7572e2!2sStadion%20Pancasila%20UGM%20%E2%80%94%20Universitas%20Gajah%20Mada!5e1!3m2!1sid!2sid!4v1784517950509!5m2!1sid!2sid";
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
@@ -32,7 +36,7 @@ const galleryImages = [
 export default function Page() {
   return (
     <div className={styles.page}>
-      <Header open={registrationOpen} />
+      <SiteHeader open={registrationOpen} />
       <main>
         <Hero open={registrationOpen} />
         <Stats />
@@ -45,42 +49,12 @@ export default function Page() {
   );
 }
 
-function Header({ open }: { open: boolean }) {
-  return (
-    <header className={styles.header}>
-      <nav className={styles.nav} aria-label="Navigasi utama">
-        <Link className={styles.brand} href="/" aria-label="Marching Band UGM, beranda">
-          <Image
-            src="/figma/brand-lockup.png"
-            alt=""
-            width={60}
-            height={60}
-            priority
-            unoptimized
-          />
-          <span>Marching Band UGM</span>
-        </Link>
-        <div className={styles.navLinks}>
-          <a href="#tentang">Tentang</a>
-          <a href="#kegiatan">Kegiatan</a>
-          <a href="#prestasi">Prestasi</a>
-          {open ? (
-            <Link className={styles.navCta} href="/daftar">Daftar Sekarang</Link>
-          ) : (
-            <span className={styles.navClosed}>Pendaftaran Ditutup</span>
-          )}
-        </div>
-      </nav>
-    </header>
-  );
-}
-
 function Hero({ open }: { open: boolean }) {
   return (
-    <section className={styles.hero} aria-labelledby="hero-title">
+    <HeroParallax className={styles.hero}>
       <div className={styles.heroCopy}>
         <p className={styles.eyebrow}><span />Est. 1979</p>
-        <h1 id="hero-title">Bergabung dengan kami !</h1>
+        <h1 id="hero-title">Bergabung dengan kami!</h1>
         <p className={styles.heroLead}>
           Lebih dari empat dekade mencetak musisi, penari, dan pemimpin. Satu komunitas,
           satu irama. Kekeluargaan yang bertahan seumur hidup.
@@ -116,7 +90,7 @@ function Hero({ open }: { open: boolean }) {
         <HeroPhoto className={styles.family} src="hero-family.png" alt="" />
         <HeroPhoto className={styles.guard} src="hero-guard.png" alt="" />
       </div>
-    </section>
+    </HeroParallax>
   );
 }
 
@@ -205,7 +179,15 @@ function Location() {
   return (
     <section id="jadwal" className={styles.location} aria-labelledby="location-title">
       <div className={styles.locationCard}>
-        <div className={styles.mapPlaceholder} aria-hidden="true" />
+        <div className={styles.mapPlaceholder}>
+          <iframe
+            src={googleMapsEmbedUrl}
+            title="Peta Stadion Pancasila UGM"
+            loading="lazy"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        </div>
         <div className={styles.locationCopy}>
           <p>Lokasi</p>
           <h2 id="location-title">Stadion Pancasila UGM</h2>
@@ -234,7 +216,8 @@ function GalleryCta({ open }: { open: boolean }) {
               src={"/figma/" + src}
               alt={alt}
               fill
-              sizes="(max-width: 720px) 90px, (max-width: 1050px) 126px, 7vw"
+              sizes="(max-width: 720px) 90px, (max-width: 1050px) 126px, 30vw"
+              quality={100}
             />
           </button>
         ))}
