@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { HeroParallax } from "@/components/hero-parallax";
+import { SiteHeader } from "@/components/site-header";
 import { config, isRegistrationOpen } from "@/lib/config";
 import styles from "./page.module.css";
 
@@ -35,7 +36,7 @@ const galleryImages = [
 export default function Page() {
   return (
     <div className={styles.page}>
-      <Header open={registrationOpen} />
+      <SiteHeader open={registrationOpen} />
       <main>
         <Hero open={registrationOpen} />
         <Stats />
@@ -45,36 +46,6 @@ export default function Page() {
       </main>
       <Footer />
     </div>
-  );
-}
-
-function Header({ open }: { open: boolean }) {
-  return (
-    <header className={styles.header}>
-      <nav className={styles.nav} aria-label="Navigasi utama">
-        <Link className={styles.brand} href="/" aria-label="Marching Band UGM, beranda">
-          <Image
-            src="/figma/brand-lockup.png"
-            alt=""
-            width={60}
-            height={60}
-            priority
-            unoptimized
-          />
-          <span>Marching Band UGM</span>
-        </Link>
-        <div className={styles.navLinks}>
-          <a href="#tentang">Tentang</a>
-          <a href="#kegiatan">Kegiatan</a>
-          <a href="#prestasi">Prestasi</a>
-          {open ? (
-            <Link className={styles.navCta} href="/daftar">Daftar Sekarang</Link>
-          ) : (
-            <span className={styles.navClosed}>Pendaftaran Ditutup</span>
-          )}
-        </div>
-      </nav>
-    </header>
   );
 }
 
