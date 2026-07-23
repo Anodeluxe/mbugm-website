@@ -712,7 +712,7 @@
   font-size: .75rem;
 }
 
-@media (max-width: 1450px) {
+@media (max-width: 1450px) { /* Desktop */
   .heroCopy { width: 560px; left: 7vw; }
   .hero h1 { font-size: 4rem; }
   .arena { left: 45%; }
@@ -728,7 +728,7 @@
   .locationCard { width: 520px; }
 }
 
-@media (max-width: 1050px) {
+@media (max-width: 1050px) { /* Tablet */
   .nav { width: min(calc(100% - 40px), 960px); }
   .navLinks { gap: 18px; }
 
@@ -809,7 +809,7 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 720px) { /* Mobile */
   .header { height: 68px; }
   .nav {
     width: calc(100% - 28px);
