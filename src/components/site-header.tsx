@@ -55,7 +55,7 @@ export function SiteHeader({ open }: { open: boolean }) {
           <Link href="/#tentang">Tentang</Link>
           <Link href="/#kegiatan">Kegiatan</Link>
           <Link href="/#prestasi">Prestasi</Link>
-          <Link href="/#jadwal">Jadwal</Link>
+          <Link href="/#lokasi">Lokasi</Link>
           {open ? (
             <Link className={styles.navCta} href="/daftar">Daftar Sekarang</Link>
           ) : (
@@ -82,7 +82,7 @@ export function SiteHeader({ open }: { open: boolean }) {
           <Link href="/#tentang" onClick={closeMenu}>Tentang</Link>
           <Link href="/#kegiatan" onClick={closeMenu}>Kegiatan</Link>
           <Link href="/#prestasi" onClick={closeMenu}>Prestasi</Link>
-          <Link href="/#jadwal" onClick={closeMenu}>Jadwal</Link>
+          <Link href="/#lokasi" onClick={closeMenu}>Lokasi</Link>
           {open ? (
             <Link className={styles.drawerCta} href="/daftar" onClick={closeMenu}>
               Daftar Sekarang <span aria-hidden="true">→</span>
