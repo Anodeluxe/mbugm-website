@@ -17,6 +17,9 @@ import {
 } from "@react-pdf/renderer";
 import type { Style } from "@react-pdf/types";
 import type { Applicant } from "@/server/db/schema";
+import { config, formatRupiah } from "@/lib/config";
+
+const REGISTRATION_FEE_LABEL = formatRupiah(config.registrationFee);
 
 const C = {
   header: "#2c3e50",
@@ -94,13 +97,20 @@ const styles = StyleSheet.create({
   },
   paymentMeta: {
     marginTop: 5,
-    marginBottom: 12,
     color: C.label,
+    textAlign: "center",
+  },
+  paymentAmount: {
+    marginTop: 7,
+    marginBottom: 10,
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
+    color: C.header,
     textAlign: "center",
   },
   paymentProofSlot: {
     width: "100%",
-    height: 690,
+    height: 670,
     objectFit: "contain",
   },
 });
@@ -273,6 +283,9 @@ export function ApplicantDocument({
           <Text style={styles.paymentTitle}>Bukti Pembayaran</Text>
           <Text style={styles.paymentMeta}>
             {disp(a.referenceNumber)} | {disp(a.namaLengkap)} | {disp(a.nim)}
+          </Text>
+          <Text style={styles.paymentAmount}>
+            Total Pembayaran: {REGISTRATION_FEE_LABEL}
           </Text>
           <ImageSlot
             src={paymentProof}

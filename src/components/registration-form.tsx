@@ -12,6 +12,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import imageCompression from "browser-image-compression";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { submitApplication } from "@/server/actions/submit-application";
+import { config, formatRupiah } from "@/lib/config";
 import {
   getPlacementSessionTime,
   groupPlacementSessions,
@@ -31,6 +32,8 @@ type SessionOption = {
   quota: number;
   bookedCount: number;
 };
+
+const REGISTRATION_FEE_LABEL = formatRupiah(config.registrationFee);
 
 const INITIAL = {
   nim: "", namaLengkap: "", namaPanggilan: "", tempatLahir: "", tanggalLahir: "",
@@ -719,7 +722,9 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   Pembayaran Biaya Pendaftaran
                 </h2>
                 <p className="mt-1 max-w-[62ch] text-sm leading-relaxed text-warm-gray text-pretty">
-                  Scan QRIS berikut, selesaikan pembayaran, lalu unggah screenshot bukti pembayaranmu.
+                  Lakukan pembayaran sebesar{" "}
+                  <strong className="font-semibold text-ink">{REGISTRATION_FEE_LABEL}</strong>{" "}
+                  melalui QRIS berikut, lalu unggah screenshot bukti pembayaranmu.
                 </p>
               </div>
 
@@ -736,10 +741,19 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 </div>
 
                 <div className="rounded-xl bg-parchment/35 p-4 font-body text-sm text-warm-gray">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-warm-gray">
+                    Total Pembayaran
+                  </p>
+                  <p className="mt-1 font-display text-2xl font-bold tabular-nums text-crimson">
+                    {REGISTRATION_FEE_LABEL}
+                  </p>
+                  <div className="my-4 h-px bg-border" />
                   <p className="font-semibold text-ink">Cara pembayaran</p>
                   <ol className="mt-3 list-decimal space-y-2 pl-5 leading-relaxed">
                     <li>Scan QRIS menggunakan aplikasi pembayaran.</li>
-                    <li>Periksa tujuan pembayaran sebelum membayar.</li>
+                    <li>
+                      Masukkan nominal {REGISTRATION_FEE_LABEL} dan periksa tujuan pembayaran.
+                    </li>
                     <li>Simpan screenshot transaksi yang berhasil.</li>
                   </ol>
                   <a
@@ -872,6 +886,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   },
                   { label: "Pas Foto", value: pasFoto?.name ?? "─" },
                   { label: "KTM", value: ktm?.name ?? "─" },
+                  { label: "Biaya", value: REGISTRATION_FEE_LABEL },
                   { label: "Bukti Bayar", value: paymentProof?.name ?? "─" },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex gap-3 text-sm font-body">
