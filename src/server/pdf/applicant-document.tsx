@@ -79,6 +79,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   ktmSlot: { width: 110, height: 70, marginVertical: 4, objectFit: "cover" },
+  paymentCard: {
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 8,
+    padding: 18,
+    flex: 1,
+  },
+  paymentTitle: {
+    fontSize: 18,
+    fontFamily: "Helvetica-Bold",
+    color: C.header,
+    textAlign: "center",
+  },
+  paymentMeta: {
+    marginTop: 5,
+    marginBottom: 12,
+    color: C.label,
+    textAlign: "center",
+  },
+  paymentProofSlot: {
+    width: "100%",
+    height: 690,
+    objectFit: "contain",
+  },
 });
 
 function disp(value?: string | number | null): string {
@@ -140,11 +164,13 @@ export function ApplicantDocument({
   logo,
   pasFoto,
   ktm,
+  paymentProof,
 }: {
   applicant: Applicant;
   logo?: string;
   pasFoto?: string;
   ktm?: string;
+  paymentProof?: string;
 }) {
   const dataDiri: [string, string][] = [
     ["Nama Lengkap", disp(a.namaLengkap)],
@@ -239,6 +265,20 @@ export function ApplicantDocument({
               <Section title="Pengalaman Marching Band" rows={marchingBand} />
             </View>
           </View>
+        </View>
+      </Page>
+
+      <Page size="A4" style={styles.page}>
+        <View style={styles.paymentCard}>
+          <Text style={styles.paymentTitle}>Bukti Pembayaran</Text>
+          <Text style={styles.paymentMeta}>
+            {disp(a.referenceNumber)} | {disp(a.namaLengkap)} | {disp(a.nim)}
+          </Text>
+          <ImageSlot
+            src={paymentProof}
+            style={styles.paymentProofSlot}
+            label="Bukti pembayaran belum tersedia"
+          />
         </View>
       </Page>
     </Document>

@@ -1,12 +1,13 @@
 // components/registration-form.tsx
 //
-// 9-step paginated registration form. All form state, file uploads, image
+// 10-step paginated registration form. All form state, file uploads, image
 // compression, CAPTCHA, and submission logic are preserved from the original.
 // Pagination is purely presentational — the <form> tag wraps all steps so
 // native validation and FormData construction remain unchanged.
 
 "use client";
 
+import Image from "next/image";
 import { useRef, useState, useCallback, useEffect } from "react";
 import imageCompression from "browser-image-compression";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
@@ -56,7 +57,7 @@ const REQUIRED_PER_STEP: Partial<Record<number, (keyof FormValues)[]>> = {
   1: ["tigaKata"],
   2: ["fakultas", "prodi"],
   3: ["noTelp", "email"],
-  8: ["sessionId"],
+  9: ["sessionId"],
 };
 
 const FIELD_LABELS: Partial<Record<keyof FormValues, string>> = {
@@ -83,6 +84,7 @@ const STEPS = [
   { label: "Media Sosial" },
   { label: "Pengalaman MB" },
   { label: "Berkas" },
+  { label: "Pembayaran" },
   { label: "Penempatan" },
 ];
 
@@ -107,6 +109,7 @@ type DraftPayload = {
   currentStep: number;
   pasFoto: File | null;
   ktm: File | null;
+  paymentProof: File | null;
   savedAt: number;
 };
 
@@ -188,6 +191,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const [values, setValues] = useState<FormValues>(INITIAL);
   const [pasFoto, setPasFoto] = useState<File | null>(null);
   const [ktm, setKtm] = useState<File | null>(null);
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -233,6 +237,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           setCurrentStep(Math.max(0, Math.min(draft.currentStep, TOTAL_STEPS - 1)));
           setPasFoto(draft.pasFoto);
           setKtm(draft.ktm);
+          setPaymentProof(draft.paymentProof ?? null);
           setDraftStatus("saved");
         }
       } catch {
@@ -257,6 +262,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         currentStep,
         pasFoto,
         ktm,
+        paymentProof,
         savedAt: Date.now(),
       })
         .then(() => setDraftStatus("saved"))
@@ -264,7 +270,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     }, SAVE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeout);
-  }, [draftReady, values, currentStep, pasFoto, ktm, status.state]);
+  }, [draftReady, values, currentStep, pasFoto, ktm, paymentProof, status.state]);
 
   function validateStep(step: number): string | null {
     const missingField = REQUIRED_PER_STEP[step]?.find((key) => !values[key]?.trim());
@@ -280,7 +286,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         if (!ktm) return 'Kolom "Foto KTM" wajib diisi.';
         return null;
       },
-      8: () => {
+      8: () => (!paymentProof ? 'Kolom "Bukti Pembayaran" wajib diisi.' : null),
+      9: () => {
         if (!selectedSession) return "Pilih sesi penempatan yang tersedia.";
         if (selectedSession.bookedCount >= selectedSession.quota) {
           return "Sesi yang dipilih sudah penuh. Silakan pilih sesi lain.";
@@ -313,13 +320,15 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     e.preventDefault();
     if (!pasFoto) return setStatus({ state: "error", message: "Mohon unggah pas foto." });
     if (!ktm) return setStatus({ state: "error", message: "Mohon unggah foto KTM." });
+    if (!paymentProof) return setStatus({ state: "error", message: "Mohon unggah bukti pembayaran." });
     if (!turnstileToken) return setStatus({ state: "error", message: "Mohon selesaikan verifikasi CAPTCHA." });
 
     setStatus({ state: "submitting" });
     try {
-      const [pasFotoC, ktmC] = await Promise.all([
+      const [pasFotoC, ktmC, paymentProofC] = await Promise.all([
         imageCompression(pasFoto, COMPRESS_OPTS),
         imageCompression(ktm, COMPRESS_OPTS),
+        imageCompression(paymentProof, COMPRESS_OPTS),
       ]);
 
       const fd = new FormData();
@@ -329,6 +338,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       fd.append("turnstileToken", turnstileToken);
       fd.append("pasFoto", pasFotoC, "pasfoto.jpg");
       fd.append("ktm", ktmC, "ktm.jpg");
+      fd.append("paymentProof", paymentProofC, "bukti-pembayaran.jpg");
 
       const result = await submitApplication(fd);
       if (result.ok) {
@@ -699,8 +709,70 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </fieldset>
         )}
 
-        {/* —— Step 8: Penempatan & Verifikasi —— */}
+        {/* —— Step 8: Pembayaran —— */}
         {currentStep === 8 && (
+          <fieldset>
+            <legend>Pembayaran</legend>
+            <div className="space-y-6">
+              <div>
+                <h2 className="font-display text-xl font-bold text-ink text-balance">
+                  Pembayaran Biaya Pendaftaran
+                </h2>
+                <p className="mt-1 max-w-[62ch] text-sm leading-relaxed text-warm-gray text-pretty">
+                  Scan QRIS berikut, selesaikan pembayaran, lalu unggah screenshot bukti pembayaranmu.
+                </p>
+              </div>
+
+              <div className="grid items-start gap-5 sm:grid-cols-[minmax(0,280px)_1fr]">
+                <div className="rounded-2xl bg-paper p-3 shadow-[0_0_0_1px_rgba(34,30,27,0.10),0_2px_8px_rgba(34,30,27,0.06)]">
+                  <Image
+                    src="/figma/qris_mbugm.jpeg"
+                    alt="QRIS pembayaran PAB Marching Band UGM 2026"
+                    width={912}
+                    height={1280}
+                    className="h-auto w-full rounded-lg outline outline-1 -outline-offset-1 outline-black/10"
+                    sizes="(max-width: 640px) calc(100vw - 56px), 280px"
+                  />
+                </div>
+
+                <div className="rounded-xl bg-parchment/35 p-4 font-body text-sm text-warm-gray">
+                  <p className="font-semibold text-ink">Cara pembayaran</p>
+                  <ol className="mt-3 list-decimal space-y-2 pl-5 leading-relaxed">
+                    <li>Scan QRIS menggunakan aplikasi pembayaran.</li>
+                    <li>Periksa tujuan pembayaran sebelum membayar.</li>
+                    <li>Simpan screenshot transaksi yang berhasil.</li>
+                  </ol>
+                  <a
+                    href="/figma/qris_mbugm.jpeg"
+                    download="QRIS-PAB-MBUGM-2026.jpeg"
+                    className="mt-4 inline-flex min-h-10 items-center rounded-md bg-ink px-4 py-2 text-xs font-bold text-paper transition-[background-color,transform] duration-150 ease-out hover:bg-crimson active:scale-[0.96]"
+                  >
+                    Simpan Gambar QRIS
+                  </a>
+                </div>
+              </div>
+
+              <Field label="Screenshot Bukti Pembayaran" required>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setPaymentProof(e.target.files?.[0] ?? null)}
+                />
+                <p className="mt-1 text-xs leading-relaxed text-warm-gray font-body">
+                  Format JPG/PNG, ukuran maks 5 MB. Pastikan status transaksi dan tujuan pembayaran terlihat jelas.
+                </p>
+                {paymentProof && (
+                  <p className="mt-1 text-xs font-medium text-crimson font-body">
+                    Terpilih: {paymentProof.name}
+                  </p>
+                )}
+              </Field>
+            </div>
+          </fieldset>
+        )}
+
+        {/* —— Step 9: Penempatan & Verifikasi —— */}
+        {currentStep === 9 && (
           <fieldset>
             <legend>Penempatan & Verifikasi</legend>
             <div className="space-y-6">
@@ -800,6 +872,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   },
                   { label: "Pas Foto", value: pasFoto?.name ?? "─" },
                   { label: "KTM", value: ktm?.name ?? "─" },
+                  { label: "Bukti Bayar", value: paymentProof?.name ?? "─" },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex gap-3 text-sm font-body">
                     <span className="text-warm-gray w-24 shrink-0">{label}</span>

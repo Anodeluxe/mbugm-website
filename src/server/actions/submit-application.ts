@@ -38,7 +38,7 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
   // 0. Split the text fields from the file fields.
   const raw: Record<string, FormDataEntryValue> = {};
   for (const [k, v] of formData.entries()) {
-    if (k === "pasFoto" || k === "ktm") continue;
+    if (k === "pasFoto" || k === "ktm" || k === "paymentProof") continue;
     raw[k] = v;
   }
 
@@ -69,9 +69,11 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
   // 4. FILES: required, must be images, must be within the size ceiling.
   const pasFotoFile = formData.get("pasFoto");
   const ktmFile = formData.get("ktm");
+  const paymentProofFile = formData.get("paymentProof");
   if (!isUploadedFile(pasFotoFile)) return { ok: false, error: "Pas foto wajib diunggah." };
   if (!isUploadedFile(ktmFile)) return { ok: false, error: "Foto KTM wajib diunggah." };
-  for (const f of [pasFotoFile, ktmFile]) {
+  if (!isUploadedFile(paymentProofFile)) return { ok: false, error: "Bukti pembayaran wajib diunggah." };
+  for (const f of [pasFotoFile, ktmFile, paymentProofFile]) {
     if (f.size > MAX_IMAGE_BYTES) return { ok: false, error: "Ukuran gambar terlalu besar." };
     if (!f.type.startsWith("image/")) return { ok: false, error: "File harus berupa gambar." };
   }
@@ -79,9 +81,11 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
   // Re-encode/sanitize. If a "file" isn't a real image, sharp throws here.
   let pasFotoBuf: Buffer;
   let ktmBuf: Buffer;
+  let paymentProofBuf: Buffer;
   try {
     pasFotoBuf = await processImage(Buffer.from(await pasFotoFile.arrayBuffer()));
     ktmBuf = await processImage(Buffer.from(await ktmFile.arrayBuffer()));
+    paymentProofBuf = await processImage(Buffer.from(await paymentProofFile.arrayBuffer()));
   } catch {
     return { ok: false, error: "Gambar tidak dapat diproses. Pastikan file berupa foto." };
   }
@@ -190,7 +194,11 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
   //    upload to Drive and embed into the PDF. A failure here doesn't fail the
   //    registration — the resync button mops it up.
   try {
-    await syncApplicantToGoogle(inserted, { pasFoto: pasFotoBuf, ktm: ktmBuf });
+    await syncApplicantToGoogle(inserted, {
+      pasFoto: pasFotoBuf,
+      ktm: ktmBuf,
+      paymentProof: paymentProofBuf,
+    });
   } catch (e) {
     console.error("Google sync failed (will need resync):", e);
   }
