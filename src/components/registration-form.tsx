@@ -1,16 +1,22 @@
 // components/registration-form.tsx
 //
-// 9-step paginated registration form. All form state, file uploads, image
+// 10-step paginated registration form. All form state, file uploads, image
 // compression, CAPTCHA, and submission logic are preserved from the original.
 // Pagination is purely presentational — the <form> tag wraps all steps so
 // native validation and FormData construction remain unchanged.
 
 "use client";
 
+import Image from "next/image";
 import { useRef, useState, useCallback, useEffect } from "react";
 import imageCompression from "browser-image-compression";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { submitApplication } from "@/server/actions/submit-application";
+import { config, formatRupiah } from "@/lib/config";
+import {
+  getPlacementSessionTime,
+  groupPlacementSessions,
+} from "@/lib/placement-sessions";
 import {
   AGAMA_OPTIONS,
   JENIS_KELAMIN_OPTIONS,
@@ -19,7 +25,15 @@ import {
   JENIS_TEMPAT_OPTIONS,
 } from "@/lib/constants";
 
-type SessionOption = { id: number; dayLabel: string; sessionNo: number };
+type SessionOption = {
+  id: number;
+  dayLabel: string;
+  sessionNo: number;
+  quota: number;
+  bookedCount: number;
+};
+
+const REGISTRATION_FEE_LABEL = formatRupiah(config.registrationFee);
 
 const INITIAL = {
   nim: "", namaLengkap: "", namaPanggilan: "", tempatLahir: "", tanggalLahir: "",
@@ -46,6 +60,7 @@ const REQUIRED_PER_STEP: Partial<Record<number, (keyof FormValues)[]>> = {
   1: ["tigaKata"],
   2: ["fakultas", "prodi"],
   3: ["noTelp", "email"],
+  9: ["sessionId"],
 };
 
 const FIELD_LABELS: Partial<Record<keyof FormValues, string>> = {
@@ -55,11 +70,12 @@ const FIELD_LABELS: Partial<Record<keyof FormValues, string>> = {
   tanggalLahir: "Tanggal Lahir",
   jenisKelamin: "Jenis Kelamin",
   agama: "Agama",
-  tigaKata: "3 Kata tentang Dirimu",
+  tigaKata: "Sebutkan 3 sifat yang menggambarkan dirimu",
   fakultas: "Fakultas",
   prodi: "Program Studi",
   noTelp: "Nomor Telepon",
   email: "Email",
+  sessionId: "Sesi Penempatan",
 };
 
 const STEPS = [
@@ -71,6 +87,7 @@ const STEPS = [
   { label: "Media Sosial" },
   { label: "Pengalaman MB" },
   { label: "Berkas" },
+  { label: "Pembayaran" },
   { label: "Penempatan" },
 ];
 
@@ -95,6 +112,7 @@ type DraftPayload = {
   currentStep: number;
   pasFoto: File | null;
   ktm: File | null;
+  paymentProof: File | null;
   savedAt: number;
 };
 
@@ -176,9 +194,12 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const [values, setValues] = useState<FormValues>(INITIAL);
   const [pasFoto, setPasFoto] = useState<File | null>(null);
   const [ktm, setKtm] = useState<File | null>(null);
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const sessionDays = groupPlacementSessions(sessions);
+  const selectedSession = sessions.find((session) => String(session.id) === values.sessionId);
 
   const [status, setStatus] = useState<
     | { state: "idle" }
@@ -219,6 +240,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           setCurrentStep(Math.max(0, Math.min(draft.currentStep, TOTAL_STEPS - 1)));
           setPasFoto(draft.pasFoto);
           setKtm(draft.ktm);
+          setPaymentProof(draft.paymentProof ?? null);
           setDraftStatus("saved");
         }
       } catch {
@@ -243,6 +265,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         currentStep,
         pasFoto,
         ktm,
+        paymentProof,
         savedAt: Date.now(),
       })
         .then(() => setDraftStatus("saved"))
@@ -250,7 +273,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     }, SAVE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeout);
-  }, [draftReady, values, currentStep, pasFoto, ktm, status.state]);
+  }, [draftReady, values, currentStep, pasFoto, ktm, paymentProof, status.state]);
 
   function validateStep(step: number): string | null {
     const missingField = REQUIRED_PER_STEP[step]?.find((key) => !values[key]?.trim());
@@ -264,6 +287,14 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       7: () => {
         if (!pasFoto) return 'Kolom "Pas Foto" wajib diisi.';
         if (!ktm) return 'Kolom "Foto KTM" wajib diisi.';
+        return null;
+      },
+      8: () => (!paymentProof ? 'Kolom "Bukti Pembayaran" wajib diisi.' : null),
+      9: () => {
+        if (!selectedSession) return "Pilih sesi penempatan yang tersedia.";
+        if (selectedSession.bookedCount >= selectedSession.quota) {
+          return "Sesi yang dipilih sudah penuh. Silakan pilih sesi lain.";
+        }
         return null;
       },
     };
@@ -292,13 +323,15 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     e.preventDefault();
     if (!pasFoto) return setStatus({ state: "error", message: "Mohon unggah pas foto." });
     if (!ktm) return setStatus({ state: "error", message: "Mohon unggah foto KTM." });
+    if (!paymentProof) return setStatus({ state: "error", message: "Mohon unggah bukti pembayaran." });
     if (!turnstileToken) return setStatus({ state: "error", message: "Mohon selesaikan verifikasi CAPTCHA." });
 
     setStatus({ state: "submitting" });
     try {
-      const [pasFotoC, ktmC] = await Promise.all([
+      const [pasFotoC, ktmC, paymentProofC] = await Promise.all([
         imageCompression(pasFoto, COMPRESS_OPTS),
         imageCompression(ktm, COMPRESS_OPTS),
+        imageCompression(paymentProof, COMPRESS_OPTS),
       ]);
 
       const fd = new FormData();
@@ -308,6 +341,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       fd.append("turnstileToken", turnstileToken);
       fd.append("pasFoto", pasFotoC, "pasfoto.jpg");
       fd.append("ktm", ktmC, "ktm.jpg");
+      fd.append("paymentProof", paymentProofC, "bukti-pembayaran.jpg");
 
       const result = await submitApplication(fd);
       if (result.ok) {
@@ -479,7 +513,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               <Field label="Hobi">
                 <input {...field("hobi")} placeholder="mis. membaca, bermain musik, olahraga" />
               </Field>
-              <Field label="3 Kata yang Menggambarkan Dirimu" required>
+              <Field label="Sebutkan 3 sifat yang menggambarkan dirimu" required>
                 <input
                   {...field("tigaKata")}
                   placeholder="mis. tekun, ramah, kreatif"
@@ -678,24 +712,161 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </fieldset>
         )}
 
-        {/* —— Step 8: Penempatan & Verifikasi —— */}
+        {/* —— Step 8: Pembayaran —— */}
         {currentStep === 8 && (
+          <fieldset>
+            <legend>Pembayaran</legend>
+            <div className="space-y-6">
+              <div>
+                <h2 className="font-display text-xl font-bold text-ink text-balance">
+                  Pembayaran Biaya Pendaftaran
+                </h2>
+                <p className="mt-1 max-w-[62ch] text-sm leading-relaxed text-warm-gray text-pretty">
+                  Lakukan pembayaran sebesar{" "}
+                  <strong className="font-semibold text-ink">{REGISTRATION_FEE_LABEL}</strong>{" "}
+                  melalui QRIS berikut, lalu unggah screenshot bukti pembayaranmu.
+                </p>
+              </div>
+
+              <div className="grid items-start gap-5 sm:grid-cols-[minmax(0,280px)_1fr]">
+                <div className="rounded-2xl bg-paper p-3 shadow-[0_0_0_1px_rgba(34,30,27,0.10),0_2px_8px_rgba(34,30,27,0.06)]">
+                  <Image
+                    src="/figma/qris_mbugm.jpeg"
+                    alt="QRIS pembayaran PAB Marching Band UGM 2026"
+                    width={912}
+                    height={1280}
+                    className="h-auto w-full rounded-lg outline outline-1 -outline-offset-1 outline-black/10"
+                    sizes="(max-width: 640px) calc(100vw - 56px), 280px"
+                  />
+                </div>
+
+                <div className="rounded-xl bg-parchment/35 p-4 font-body text-sm text-warm-gray">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-warm-gray">
+                    Total Pembayaran
+                  </p>
+                  <p className="mt-1 font-display text-2xl font-bold tabular-nums text-crimson">
+                    {REGISTRATION_FEE_LABEL}
+                  </p>
+                  <div className="my-4 h-px bg-border" />
+                  <p className="font-semibold text-ink">Cara pembayaran</p>
+                  <ol className="mt-3 list-decimal space-y-2 pl-5 leading-relaxed">
+                    <li>Scan QRIS menggunakan aplikasi pembayaran.</li>
+                    <li>
+                      Masukkan nominal {REGISTRATION_FEE_LABEL} dan periksa tujuan pembayaran.
+                    </li>
+                    <li>Simpan screenshot transaksi yang berhasil.</li>
+                  </ol>
+                  <a
+                    href="/figma/qris_mbugm.jpeg"
+                    download="QRIS-PAB-MBUGM-2026.jpeg"
+                    className="mt-4 inline-flex min-h-10 items-center rounded-md bg-ink px-4 py-2 text-xs font-bold text-paper transition-[background-color,transform] duration-150 ease-out hover:bg-crimson active:scale-[0.96]"
+                  >
+                    Simpan Gambar QRIS
+                  </a>
+                </div>
+              </div>
+
+              <Field label="Screenshot Bukti Pembayaran" required>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setPaymentProof(e.target.files?.[0] ?? null)}
+                />
+                <p className="mt-1 text-xs leading-relaxed text-warm-gray font-body">
+                  Format JPG/PNG, ukuran maks 5 MB. Pastikan status transaksi dan tujuan pembayaran terlihat jelas.
+                </p>
+                {paymentProof && (
+                  <p className="mt-1 text-xs font-medium text-crimson font-body">
+                    Terpilih: {paymentProof.name}
+                  </p>
+                )}
+              </Field>
+            </div>
+          </fieldset>
+        )}
+
+        {/* —— Step 9: Penempatan & Verifikasi —— */}
+        {currentStep === 9 && (
           <fieldset>
             <legend>Penempatan & Verifikasi</legend>
             <div className="space-y-6">
-              <Field label="Sesi Penempatan" required>
-                <select {...field("sessionId")}>
-                  <option value="">-- Pilih Sesi --</option>
-                  {sessions.map((s) => (
-                    <option key={s.id} value={String(s.id)}>
-                      {s.dayLabel} ─ Sesi {s.sessionNo}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-warm-gray mt-1 font-body">
-                  Pilih sesi penempatan yang sesuai dengan jadwalmu.
+              <div>
+                <p id="session-picker-label" className="font-body text-sm font-semibold text-ink">
+                  Sesi Penempatan
+                  <span className="text-crimson ml-1" aria-label="wajib diisi">*</span>
                 </p>
-              </Field>
+                <p className="mt-1 text-sm leading-relaxed text-warm-gray text-pretty">
+                  Pilih satu hari dan sesi yang paling sesuai. Kapasitas maksimal 40 peserta per sesi.
+                </p>
+
+                {sessionDays.length > 0 ? (
+                  <div
+                    className="mt-5 space-y-5"
+                    role="radiogroup"
+                    aria-labelledby="session-picker-label"
+                  >
+                    {sessionDays.map((day) => (
+                      <section key={day.dayLabel} aria-label={day.dayLabel}>
+                        <h3 className="font-body text-sm font-bold text-ink mb-2">
+                          {day.dayLabel}
+                        </h3>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {day.sessions.map((session) => {
+                            const selected = values.sessionId === String(session.id);
+                            const full = session.bookedCount >= session.quota;
+
+                            return (
+                              <button
+                                key={session.id}
+                                type="button"
+                                role="radio"
+                                aria-checked={selected}
+                                disabled={full}
+                                onClick={() => update("sessionId", String(session.id))}
+                                className={`min-h-24 rounded-lg px-4 py-3.5 text-left font-body transition-[background-color,box-shadow,transform] duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100 ${
+                                  selected
+                                    ? "bg-crimson/5 shadow-[0_0_0_2px_#AD2829]"
+                                    : "bg-paper shadow-[0_0_0_1px_rgba(34,30,27,0.14)] hover:bg-parchment/25 hover:shadow-[0_0_0_1px_rgba(173,40,41,0.5)] active:scale-[0.96]"
+                                }`}
+                              >
+                                <span className="flex items-start justify-between gap-4">
+                                  <span>
+                                    <span className="block text-sm font-bold text-ink">
+                                      Sesi {session.sessionNo}
+                                    </span>
+                                    <span className="mt-1 block text-sm text-warm-gray tabular-nums">
+                                      {getPlacementSessionTime(day.dayLabel, session.sessionNo)}
+                                    </span>
+                                  </span>
+                                  <span
+                                    className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full transition-[background-color,box-shadow] duration-200 ${
+                                      selected
+                                        ? "bg-crimson text-paper shadow-[0_0_0_1px_#AD2829]"
+                                        : "bg-paper text-transparent shadow-[0_0_0_1px_rgba(34,30,27,0.28)]"
+                                    }`}
+                                    aria-hidden="true"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  </span>
+                                </span>
+                                <span className={`mt-3 block text-xs font-semibold tabular-nums ${full ? "text-crimson" : "text-warm-gray"}`}>
+                                  {session.bookedCount}/{session.quota} peserta{full ? " • Penuh" : ""}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-lg bg-parchment/40 px-4 py-3 text-sm text-warm-gray">
+                    Belum ada sesi penempatan yang tersedia.
+                  </p>
+                )}
+              </div>
 
               {/* Summary review */}
               <div className="rounded-xl border border-border bg-parchment/30 p-5 space-y-2">
@@ -707,12 +878,20 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   { label: "NIM", value: values.nim },
                   { label: "Prodi", value: [values.jenjangStudi, values.prodi, values.fakultas].filter(Boolean).join(" ─ ") },
                   { label: "Email", value: values.email },
+                  {
+                    label: "Sesi",
+                    value: selectedSession
+                      ? `${selectedSession.dayLabel} • Sesi ${selectedSession.sessionNo} • ${getPlacementSessionTime(selectedSession.dayLabel, selectedSession.sessionNo)}`
+                      : "─",
+                  },
                   { label: "Pas Foto", value: pasFoto?.name ?? "─" },
                   { label: "KTM", value: ktm?.name ?? "─" },
+                  { label: "Biaya", value: REGISTRATION_FEE_LABEL },
+                  { label: "Bukti Bayar", value: paymentProof?.name ?? "─" },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex gap-3 text-sm font-body">
                     <span className="text-warm-gray w-24 shrink-0">{label}</span>
-                    <span className="text-ink font-medium truncate">{value || "─"}</span>
+                    <span className="min-w-0 text-ink font-medium break-words">{value || "─"}</span>
                   </div>
                 ))}
               </div>

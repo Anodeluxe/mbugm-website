@@ -14,6 +14,7 @@ export const config = {
   // Branding text shown on the landing page.
   eventName: "Penerimaan Anggota Baru Marching Band UGM",
   shortName: "PAB 2026",
+  registrationFee: 10_000,
 
   // Brand accent color (the design pass will use this more widely).
   accentColor: "#0f2e1f",
@@ -23,6 +24,10 @@ export const config = {
   opensAt: "2025-07-01T00:00:00+07:00",
   closesAt: "2026-07-31T23:59:59+07:00",
 } as const;
+
+export function formatRupiah(value: number): string {
+  return `Rp${new Intl.NumberFormat("id-ID").format(value)}`;
+}
 
 // True when "now" falls inside the registration window.
 export function isRegistrationOpen(now: Date = new Date()): boolean {

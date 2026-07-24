@@ -35,14 +35,18 @@ export async function GET(
   // Pull photos from Drive if they've been uploaded.
   let pasFoto: string | undefined;
   let ktm: string | undefined;
+  let paymentProof: string | undefined;
   try {
     if (applicant.pasFotoDriveId) pasFoto = toDataUri(await downloadFile(applicant.pasFotoDriveId));
     if (applicant.fotoKtmDriveId) ktm = toDataUri(await downloadFile(applicant.fotoKtmDriveId));
+    if (applicant.paymentProofDriveId) {
+      paymentProof = toDataUri(await downloadFile(applicant.paymentProofDriveId));
+    }
   } catch (e) {
     console.error("Could not load photos for preview:", e);
   }
 
-  const pdf = await renderApplicantPdf(applicant, { pasFoto, ktm });
+  const pdf = await renderApplicantPdf(applicant, { pasFoto, ktm, paymentProof });
 
   return new NextResponse(new Uint8Array(pdf), {
     headers: {

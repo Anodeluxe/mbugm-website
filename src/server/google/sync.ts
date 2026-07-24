@@ -12,7 +12,11 @@ import { uploadFile, downloadFile } from "./drive";
 import { appendApplicantRow } from "./sheets";
 import { toDataUri } from "@/server/images";
 
-type ImageBuffers = { pasFoto?: Buffer; ktm?: Buffer };
+type ImageBuffers = {
+  pasFoto?: Buffer;
+  ktm?: Buffer;
+  paymentProof?: Buffer;
+};
 
 export async function syncApplicantToGoogle(
   applicant: Applicant,
@@ -27,6 +31,7 @@ export async function syncApplicantToGoogle(
   const ref = applicant.referenceNumber;
   let pasFotoId = applicant.pasFotoDriveId;
   let ktmId = applicant.fotoKtmDriveId;
+  let paymentProofId = applicant.paymentProofDriveId;
 
   // 1. Upload photos (only if we have fresh buffers and they're not uploaded).
   if (images?.pasFoto && !pasFotoId) {
@@ -37,16 +42,32 @@ export async function syncApplicantToGoogle(
     ktmId = await uploadFile(images.ktm, `${ref} - ktm.jpg`, "image/jpeg", imagesFolderId);
     await db.update(applicants).set({ fotoKtmDriveId: ktmId }).where(eq(applicants.id, applicant.id));
   }
+  if (images?.paymentProof && !paymentProofId) {
+    paymentProofId = await uploadFile(
+      images.paymentProof,
+      `${ref} - bukti-pembayaran.jpg`,
+      "image/jpeg",
+      imagesFolderId,
+    );
+    await db
+      .update(applicants)
+      .set({ paymentProofDriveId: paymentProofId, paidAt: new Date() })
+      .where(eq(applicants.id, applicant.id));
+  }
 
   // 2. PDF -> Drive, with photos embedded. Use the fresh buffers if we have
   //    them, otherwise pull the bytes back from Drive (the resync case).
   if (!applicant.driveSynced) {
     const pasFotoBuf = images?.pasFoto ?? (pasFotoId ? await downloadFile(pasFotoId) : undefined);
     const ktmBuf = images?.ktm ?? (ktmId ? await downloadFile(ktmId) : undefined);
+    const paymentProofBuf =
+      images?.paymentProof ??
+      (paymentProofId ? await downloadFile(paymentProofId) : undefined);
 
     const pdf = await renderApplicantPdf(applicant, {
       pasFoto: pasFotoBuf ? toDataUri(pasFotoBuf) : undefined,
       ktm: ktmBuf ? toDataUri(ktmBuf) : undefined,
+      paymentProof: paymentProofBuf ? toDataUri(paymentProofBuf) : undefined,
     });
     const pdfId = await uploadFile(pdf, `${ref}.pdf`, "application/pdf", folderId);
     await db

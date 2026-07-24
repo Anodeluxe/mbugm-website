@@ -208,7 +208,7 @@
   align-items: center;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 700;
   transition: background 180ms cubic-bezier(.16, 1, .3, 1), color 180ms cubic-bezier(.16, 1, .3, 1);
 }
@@ -227,7 +227,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: .92rem;
+  font-size: .875rem;
   font-weight: 800;
 }
 
@@ -712,7 +712,7 @@
   font-size: .75rem;
 }
 
-@media (max-width: 1450px) {
+@media (max-width: 1450px) { /* Desktop */
   .heroCopy { width: 560px; left: 7vw; }
   .hero h1 { font-size: 4rem; }
   .arena { left: 45%; }
@@ -728,7 +728,7 @@
   .locationCard { width: 520px; }
 }
 
-@media (max-width: 1050px) {
+@media (max-width: 1050px) { /* Tablet */
   .nav { width: min(calc(100% - 40px), 960px); }
   .navLinks { gap: 18px; }
 
@@ -809,7 +809,7 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 720px) { /* Mobile */
   .header { height: 68px; }
   .nav {
     width: calc(100% - 28px);
@@ -822,7 +822,7 @@
     position: absolute;
     left: 50%;
     gap: 8px;
-    font-size: .78rem;
+    font-size: .68rem;
     transform: translateX(-50%);
   }
   .brand img { width: 46px; height: 46px; }

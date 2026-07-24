@@ -177,7 +177,7 @@ function About() {
 
 function Location() {
   return (
-    <section id="jadwal" className={styles.location} aria-labelledby="location-title">
+    <section id="lokasi" className={styles.location} aria-labelledby="location-title">
       <div className={styles.locationCard}>
         <div className={styles.mapPlaceholder}>
           <iframe
@@ -254,7 +254,7 @@ function Footer() {
           <a href="#tentang">Tentang</a>
           <a href="#kegiatan">Kegiatan</a>
           <a href="#prestasi">Prestasi</a>
-          <a href="#jadwal">Jadwal</a>
+          <a href="#lokasi">Lokasi</a>
         </div>
         <div className={styles.footerColumn}>
           <p>Kontak</p>

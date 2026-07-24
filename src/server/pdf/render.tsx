@@ -25,7 +25,7 @@ async function getLogo(): Promise<string | undefined> {
 
 export async function renderApplicantPdf(
   applicant: Applicant,
-  opts?: { pasFoto?: string; ktm?: string },
+  opts?: { pasFoto?: string; ktm?: string; paymentProof?: string },
 ): Promise<Buffer> {
   const logo = await getLogo();
   return renderToBuffer(
@@ -34,6 +34,7 @@ export async function renderApplicantPdf(
       logo={logo}
       pasFoto={opts?.pasFoto}
       ktm={opts?.ktm}
+      paymentProof={opts?.paymentProof}
     />,
   );
 }
