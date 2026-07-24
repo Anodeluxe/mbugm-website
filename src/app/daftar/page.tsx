@@ -8,6 +8,8 @@ import { SiteHeader } from "@/components/site-header";
 import { config, isRegistrationOpen } from "@/lib/config";
 import styles from "../page.module.css";
 
+export const dynamic = "force-dynamic";
+
 export default async function DaftarPage() {
   const useLocalFormMock =
     process.env.NODE_ENV !== "production" && process.env.LOCAL_FORM_MOCK === "1";

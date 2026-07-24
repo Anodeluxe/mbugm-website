@@ -22,6 +22,13 @@
       "when": 1782620714448,
       "tag": "0002_glamorous_wild_child",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784883668078,
+      "tag": "0003_seed_placement_sessions",
+      "breakpoints": true
     }
   ]
 }
