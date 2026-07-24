@@ -85,7 +85,7 @@ export function SiteHeader({ open }: { open: boolean }) {
           <Link href="/#lokasi" onClick={closeMenu}>Lokasi</Link>
           {open ? (
             <Link className={styles.drawerCta} href="/daftar" onClick={closeMenu}>
-              Daftar Sekarang <span aria-hidden="true">→</span>
+              Daftar Sekarang
             </Link>
           ) : (
             <span className={styles.drawerClosed}>Pendaftaran Ditutup</span>

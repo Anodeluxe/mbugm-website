@@ -80,10 +80,10 @@ const FIELD_LABELS: Partial<Record<keyof FormValues, string>> = {
 
 const STEPS = [
   { label: "Data Diri" },
-  { label: "Kesehatan & Hobi" },
+  { label: "Kesehatan dan Hobi" },
   { label: "Data Akademik" },
-  { label: "Kontak & Alamat" },
-  { label: "Orang Tua / Wali" },
+  { label: "Kontak dan Alamat" },
+  { label: "Orang Tua atau Wali" },
   { label: "Media Sosial" },
   { label: "Pengalaman MB" },
   { label: "Berkas" },
@@ -282,8 +282,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     }
 
     const stepValidators: Partial<Record<number, () => string | null>> = {
-      0: () => (isFutureDate(values.tanggalLahir) ? "kamu dari masa depan?" : null),
-      3: () => (values.email.trim() && !isValidEmail(values.email) ? "email tidak valid!" : null),
+      0: () => (isFutureDate(values.tanggalLahir) ? "Tanggal lahir tidak boleh melebihi hari ini." : null),
+      3: () => (values.email.trim() && !isValidEmail(values.email) ? "Format email belum valid." : null),
       7: () => {
         if (!pasFoto) return 'Kolom "Pas Foto" wajib diisi.';
         if (!ktm) return 'Kolom "Foto KTM" wajib diisi.';
@@ -371,7 +371,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           </svg>
         </div>
         <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink mb-2">
-          Pendaftaran Berhasil!
+          Pendaftaran berhasil
         </h2>
         <p className="font-body text-warm-gray text-sm mb-8 max-w-[40ch] mx-auto leading-relaxed">
           Formulirmu telah kami terima. Simpan nomor referensi berikut sebagai bukti pendaftaran.
@@ -430,9 +430,9 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           ))}
         </div>
         <p className="mt-3 text-center font-body text-xs text-warm-gray min-h-4">
-          {draftStatus === "saving" && "Menyimpan draft..."}
-          {draftStatus === "saved" && "Draft tersimpan di device ini."}
-          {draftStatus === "error" && "Draft gagal disimpan."}
+          {draftStatus === "saving" && "Menyimpan draf"}
+          {draftStatus === "saved" && "Draf tersimpan di perangkat ini."}
+          {draftStatus === "error" && "Draf gagal disimpan."}
           {draftStatus === "idle" && "\u00A0"}
         </p>
       </div>
@@ -454,7 +454,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 <input {...field("nim")} placeholder="mis. 23/123456/PA/12345" autoComplete="off" />
               </Field>
               <Field label="Nama Lengkap" required>
-                <input {...field("namaLengkap")} placeholder="Sesuai KTP / KTM" autoComplete="name" />
+                <input {...field("namaLengkap")} placeholder="Sesuai KTP atau KTM" autoComplete="name" />
               </Field>
               <Field label="Nama Panggilan">
                 <input {...field("namaPanggilan")} placeholder="mis. Budi" />
@@ -470,13 +470,13 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               <div className="grid sm:grid-cols-2 gap-4">
                 <Field label="Jenis Kelamin" required>
                   <select {...field("jenisKelamin")}>
-                    <option value="" disabled>-- Pilih --</option>
+                    <option value="" disabled>Pilih opsi</option>
                     {JENIS_KELAMIN_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </Field>
                 <Field label="Agama" required>
                   <select {...field("agama")}>
-                    <option value="" disabled>-- Pilih --</option>
+                    <option value="" disabled>Pilih opsi</option>
                     {AGAMA_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </Field>
@@ -484,7 +484,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               <div className="grid sm:grid-cols-3 gap-4">
                 <Field label="Golongan Darah">
                   <select {...field("golonganDarah")}>
-                    <option value="">-- Pilih --</option>
+                    <option value="">Pilih opsi</option>
                     {GOLONGAN_DARAH_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </Field>
@@ -502,13 +502,13 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         {/* —— Step 1: Kesehatan & Hobi —— */}
         {currentStep === 1 && (
           <fieldset>
-            <legend>Kesehatan & Hobi</legend>
+            <legend>Kesehatan dan Hobi</legend>
             <div className="space-y-4">
               <Field label="Riwayat Penyakit">
                 <textarea {...field("riwayatPenyakit")} placeholder="Tulis jika ada, atau kosongkan jika tidak ada" />
               </Field>
               <Field label="Alergi">
-                <textarea {...field("alergi")} placeholder="mis. debu, obat tertentu - kosongkan jika tidak ada" />
+                <textarea {...field("alergi")} placeholder="mis. debu atau obat tertentu. Kosongkan jika tidak ada" />
               </Field>
               <Field label="Hobi">
                 <input {...field("hobi")} placeholder="mis. membaca, bermain musik, olahraga" />
@@ -531,7 +531,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             <div className="space-y-4">
               <Field label="Jenjang Studi">
                 <select {...field("jenjangStudi")}>
-                  <option value="">-- Pilih --</option>
+                  <option value="">Pilih opsi</option>
                   {JENJANG_STUDI_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
               </Field>
@@ -541,7 +541,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               <Field label="Program Studi" required>
                 <input {...field("prodi")} placeholder="mis. Teknik Informatika, Matematika" />
               </Field>
-              <Field label="Asal SMA / Sederajat">
+              <Field label="Asal SMA atau Sederajat">
                 <input {...field("asalSma")} placeholder="mis. SMAN 1 Yogyakarta" />
               </Field>
             </div>
@@ -551,9 +551,9 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         {/* —— Step 3: Kontak & Alamat —— */}
         {currentStep === 3 && (
           <fieldset>
-            <legend>Kontak & Alamat</legend>
+            <legend>Kontak dan Alamat</legend>
             <div className="space-y-4">
-              <Field label="Nomor Telepon / WhatsApp" required>
+              <Field label="Nomor Telepon atau WhatsApp" required>
                 <input
                   type="tel"
                   inputMode="numeric"
@@ -572,16 +572,16 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 />
               </Field>
               <Field label="Alamat Asal">
-                <textarea {...field("alamatAsal")} placeholder="Alamat sesuai KTP / domisili asli" />
+                <textarea {...field("alamatAsal")} placeholder="Alamat sesuai KTP atau domisili asal" />
               </Field>
               <Field label="Jenis Tempat Tinggal di Jogja">
                 <select {...field("jenisTempat")}>
-                  <option value="">-- Pilih --</option>
+                  <option value="">Pilih opsi</option>
                   {JENIS_TEMPAT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
               </Field>
               <Field label="Alamat di Yogyakarta">
-                <textarea {...field("alamatJogja")} placeholder="Alamat kos / asrama / rumah saat ini di Jogja" />
+                <textarea {...field("alamatJogja")} placeholder="Alamat kos, asrama, atau rumah saat ini di Yogyakarta" />
               </Field>
             </div>
           </fieldset>
@@ -590,16 +590,16 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         {/* —— Step 4: Orang Tua / Wali —— */}
         {currentStep === 4 && (
           <fieldset>
-            <legend>Data Orang Tua / Wali</legend>
+            <legend>Data Orang Tua atau Wali</legend>
             <div className="space-y-4">
-              <Field label="Nama Orang Tua / Wali">
+              <Field label="Nama Orang Tua atau Wali">
                 <input {...field("namaOrtu")} placeholder="mis. Bapak/Ibu Santoso" />
               </Field>
-              <Field label="Nomor Telepon Orang Tua / Wali">
+              <Field label="Nomor Telepon Orang Tua atau Wali">
                 <input type="tel" inputMode="numeric" pattern="[0-9]*" {...field("noOrtu")} placeholder="mis. 082198765432" />
               </Field>
-              <Field label="Alamat Orang Tua / Wali">
-                <textarea {...field("alamatOrtu")} placeholder="Alamat lengkap orang tua / wali" />
+              <Field label="Alamat Orang Tua atau Wali">
+                <textarea {...field("alamatOrtu")} placeholder="Alamat lengkap orang tua atau wali" />
               </Field>
             </div>
           </fieldset>
@@ -610,7 +610,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           <fieldset>
             <legend>Media Sosial</legend>
             <p className="font-body text-warm-gray text-sm mb-5 leading-relaxed">
-              Semua kolom opsional. Isi sesuai akun aktifmu — cukup username tanpa awalan @.
+              Semua kolom bersifat opsional. Isi nama pengguna akun aktifmu tanpa awalan @.
             </p>
             <div className="space-y-4">
               <Field label="ID Line">
@@ -628,7 +628,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               <Field label="Facebook">
                 <input {...field("idFacebook")} placeholder="username Facebook" />
               </Field>
-              <Field label="Twitter / X">
+              <Field label="X (Twitter)">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray text-sm font-body select-none"></span>
                   <input {...field("idTwitter")} className="pl-7" placeholder="@usernamekamu" />
@@ -663,10 +663,10 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 </>
               )}
               <Field label="Bidang Tari yang Diminati">
-                <input {...field("bidangTari")} placeholder="mis. Color Guard, Majorette, Flag - kosongkan jika tidak ada" />
+                <input {...field("bidangTari")} placeholder="mis. Color Guard, Majorette, atau Flag. Kosongkan jika tidak ada" />
               </Field>
               <Field label="Bidang Musik yang Diminati">
-                <input {...field("bidangMusik")} placeholder="mis. Brass, Battery Percussion, Pit - kosongkan jika tidak ada" />
+                <input {...field("bidangMusik")} placeholder="mis. Brass, Battery Percussion, atau Pit. Kosongkan jika tidak ada" />
               </Field>
               <Field label="Organisasi Lain yang Diikuti">
                 <input {...field("organisasi")} placeholder="mis. BEM Fakultas, UKM Paduan Suara" />
@@ -681,7 +681,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             <legend>Berkas</legend>
             <div className="space-y-5">
               <div className="p-4 rounded-xl bg-parchment/50 border border-border text-sm font-body text-warm-gray leading-relaxed mb-2">
-                <strong className="text-ink">Ketentuan foto:</strong> Format JPG/PNG, ukuran maks 5 MB per file.
+                <strong className="text-ink">Ketentuan foto:</strong> Format JPG atau PNG, ukuran maksimal 5 MB per file.
                 Foto akan dikompres otomatis sebelum dikirim.
               </div>
               <Field label="Pas Foto (latar polos, wajah terlihat jelas)" required>
@@ -773,7 +773,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   onChange={(e) => setPaymentProof(e.target.files?.[0] ?? null)}
                 />
                 <p className="mt-1 text-xs leading-relaxed text-warm-gray font-body">
-                  Format JPG/PNG, ukuran maks 5 MB. Pastikan status transaksi dan tujuan pembayaran terlihat jelas.
+                  Format JPG atau PNG, ukuran maksimal 5 MB. Pastikan status transaksi dan tujuan pembayaran terlihat jelas.
                 </p>
                 {paymentProof && (
                   <p className="mt-1 text-xs font-medium text-crimson font-body">
@@ -788,7 +788,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         {/* —— Step 9: Penempatan & Verifikasi —— */}
         {currentStep === 9 && (
           <fieldset>
-            <legend>Penempatan & Verifikasi</legend>
+            <legend>Penempatan dan Verifikasi</legend>
             <div className="space-y-6">
               <div>
                 <p id="session-picker-label" className="font-body text-sm font-semibold text-ink">
@@ -852,7 +852,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                                   </span>
                                 </span>
                                 <span className={`mt-3 block text-xs font-semibold tabular-nums ${full ? "text-crimson" : "text-warm-gray"}`}>
-                                  {session.bookedCount}/{session.quota} peserta{full ? " • Penuh" : ""}
+                                  {session.bookedCount}/{session.quota} peserta{full ? ", penuh" : ""}
                                 </span>
                               </button>
                             );
@@ -876,22 +876,22 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 {[
                   { label: "Nama", value: values.namaLengkap },
                   { label: "NIM", value: values.nim },
-                  { label: "Prodi", value: [values.jenjangStudi, values.prodi, values.fakultas].filter(Boolean).join(" ─ ") },
+                  { label: "Prodi", value: [values.jenjangStudi, values.prodi, values.fakultas].filter(Boolean).join(", ") },
                   { label: "Email", value: values.email },
                   {
                     label: "Sesi",
                     value: selectedSession
-                      ? `${selectedSession.dayLabel} • Sesi ${selectedSession.sessionNo} • ${getPlacementSessionTime(selectedSession.dayLabel, selectedSession.sessionNo)}`
-                      : "─",
+                      ? `${selectedSession.dayLabel}, Sesi ${selectedSession.sessionNo}, ${getPlacementSessionTime(selectedSession.dayLabel, selectedSession.sessionNo)}`
+                      : "Belum dipilih",
                   },
-                  { label: "Pas Foto", value: pasFoto?.name ?? "─" },
-                  { label: "KTM", value: ktm?.name ?? "─" },
+                  { label: "Pas Foto", value: pasFoto?.name ?? "Belum diunggah" },
+                  { label: "KTM", value: ktm?.name ?? "Belum diunggah" },
                   { label: "Biaya", value: REGISTRATION_FEE_LABEL },
-                  { label: "Bukti Bayar", value: paymentProof?.name ?? "─" },
+                  { label: "Bukti Bayar", value: paymentProof?.name ?? "Belum diunggah" },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex gap-3 text-sm font-body">
                     <span className="text-warm-gray w-24 shrink-0">{label}</span>
-                    <span className="min-w-0 text-ink font-medium break-words">{value || "─"}</span>
+                    <span className="min-w-0 text-ink font-medium break-words">{value || "Belum diisi"}</span>
                   </div>
                 ))}
               </div>
@@ -956,7 +956,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               {status.state === "submitting" ? (
                 <>
                   <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                  Mengirim...
+                  Mengirim pendaftaran
                 </>
               ) : (
                 <>

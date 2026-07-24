@@ -81,7 +81,7 @@ export default async function DaftarPage() {
             Formulir Pendaftaran
           </h1>
           <p className="font-body text-warm-gray text-sm">
-            {config.eventName} {config.year} - Isi semua kolom yang wajib dengan teliti.
+            {config.eventName} {config.year}. Isi semua kolom wajib dengan teliti.
           </p>
         </div>
 
