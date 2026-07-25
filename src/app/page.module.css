@@ -571,7 +571,7 @@
 }
 
 @media (min-width: 1051px) and (hover: hover) and (pointer: fine) {
-  .arena, .brass, .family, .drillDots {
+  .arena, .brass, .family {
     transform: translate3d(var(--hero-far-x), var(--hero-far-y), 0);
     transition: transform 420ms cubic-bezier(.16, 1, .3, 1);
   }
