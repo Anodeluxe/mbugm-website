@@ -251,10 +251,9 @@ function Footer() {
         </div>
         <div className={styles.footerColumn}>
           <p>Navigasi</p>
-          <a href="#tentang">Tentang</a>
-          <a href="#kegiatan">Kegiatan</a>
           <a href="#prestasi">Prestasi</a>
           <a href="#lokasi">Lokasi</a>
+          <a href="#tentang">Tentang</a>
         </div>
         <div className={styles.footerColumn}>
           <p>Kontak</p>
