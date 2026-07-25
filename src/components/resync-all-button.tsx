@@ -21,14 +21,14 @@ export function ResyncAllButton({ unsyncedCount }: { unsyncedCount: number }) {
       while (true) {
         const res = await resyncUnsyncedBatch();
         totalDone += res.succeeded;
-        setStatus(`Disinkronkan ${totalDone}, sisa ${res.remaining}...`);
+        setStatus(`${totalDone} data berhasil disinkronkan. Tersisa ${res.remaining} data.`);
 
         if (res.remaining === 0) {
-          setStatus(`Selesai — ${totalDone} disinkronkan.`);
+          setStatus(`Selesai. ${totalDone} data berhasil disinkronkan.`);
           break;
         }
         if (res.succeeded === 0) {
-          setStatus(`Berhenti — ${res.remaining} gagal disinkronkan, periksa manual.`);
+          setStatus(`Proses dihentikan. ${res.remaining} data gagal disinkronkan. Periksa secara manual.`);
           break;
         }
       }
@@ -39,7 +39,7 @@ export function ResyncAllButton({ unsyncedCount }: { unsyncedCount: number }) {
   if (unsyncedCount === 0) {
     return (
       <span style={{ fontSize: "0.85rem", color: "#1e7e34" }}>
-        Semua tersinkron ✓
+        Semua data telah tersinkron
       </span>
     );
   }
@@ -47,7 +47,7 @@ export function ResyncAllButton({ unsyncedCount }: { unsyncedCount: number }) {
   return (
     <span>
       <button type="button" onClick={run} disabled={pending}>
-        {pending ? "Menyinkron..." : `Sinkronkan semua (${unsyncedCount})`}
+        {pending ? "Menyinkronkan" : `Sinkronkan semua (${unsyncedCount})`}
       </button>
       {status && (
         <span style={{ marginLeft: "0.75rem", fontSize: "0.8rem", color: "#555" }}>

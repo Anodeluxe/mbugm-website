@@ -119,7 +119,7 @@ export default async function AdminHome({
           type="text"
           name="q"
           defaultValue={q ?? ""}
-          placeholder="Cari nama, NIM, no. referensi, email..."
+          placeholder="Cari nama, NIM, nomor referensi, atau email"
           style={{ ...searchField, width: 280 }}
         />
         <select name="filter" defaultValue={filter ?? "all"} style={searchField}>

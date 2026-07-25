@@ -54,7 +54,7 @@ function Hero({ open }: { open: boolean }) {
     <HeroParallax className={styles.hero}>
       <div className={styles.heroCopy}>
         <p className={styles.eyebrow}><span />Est. 1979</p>
-        <h1 id="hero-title">Bergabung dengan kami!</h1>
+        <h1 id="hero-title">Bergabung bersama kami</h1>
         <p className={styles.heroLead}>
           Lebih dari empat dekade mencetak musisi, penari, dan pemimpin. Satu komunitas,
           satu irama. Kekeluargaan yang bertahan seumur hidup.
@@ -63,13 +63,13 @@ function Hero({ open }: { open: boolean }) {
           <span aria-hidden="true" />
           <div>
             <p>Periode Pendaftaran {config.year}</p>
-            <time>{formatDate(config.opensAt)} - {formatDate(config.closesAt)}</time>
+            <time>{formatDate(config.opensAt)} sampai {formatDate(config.closesAt)}</time>
           </div>
         </div>
         <div className={styles.heroActions}>
           {open ? (
             <Link className={styles.primaryButton} href="/daftar">
-              Daftar Sekarang <span aria-hidden="true">→</span>
+              Daftar Sekarang
             </Link>
           ) : (
             <span className={styles.disabledButton}>Pendaftaran Ditutup</span>
@@ -143,7 +143,7 @@ function About() {
     <section id="tentang" className={styles.about}>
       <div className={styles.aboutIntro}>
         <p className={styles.sectionLabel}>Tentang Kami</p>
-        <h2>“Kiblat marching band Indonesia — sejak 1979.”</h2>
+        <h2>Kiblat marching band Indonesia sejak 1979</h2>
         <p className={styles.aboutCaption}>
           Visi kami: menjadi representasi terbaik UGM dan kebanggaan masyarakat Yogyakarta
           di panggung nasional maupun internasional.
@@ -154,21 +154,21 @@ function About() {
           Marching Band Universitas Gadjah Mada berdiri pada <strong>11 Maret 1979</strong>,
           bermula sebagai unit <em>drum corps</em> kampus. Selama lebih dari empat dekade,
           MBUGM telah berkembang menjadi salah satu unit marching band paling bergengsi di
-          Indonesia — dengan rekam jejak juara GPMB berulang kali sepanjang 2010–2017,
-          penampilan di Istana Negara, Gedung Agung, Festival Kesenian Yogyakarta, dan
-          berbagai acara internasional.
+          Indonesia. Rekam jejak kami mencakup gelar juara GPMB berulang kali dari 2010
+          hingga 2017, penampilan di Istana Negara, Gedung Agung, Festival Kesenian
+          Yogyakarta, dan berbagai acara internasional.
         </p>
         <p>
-          Apa yang membedakan MBUGM bukan hanya piala atau panggung — melainkan nilai yang
-          ditanamkan kepada setiap anggota: <strong>kekeluargaan</strong>,{" "}
+          MBUGM bukan hanya tentang piala atau panggung. Setiap anggota belajar tentang{" "}
+          <strong>kekeluargaan</strong>,{" "}
           <strong>gotong royong</strong>, disiplin, dan tanggung jawab. Ikatan ini melampaui
           masa kuliah dan membentuk komunitas alumni yang saling mendukung hingga ke seluruh
           penjuru negeri.
         </p>
         <p>
-          Setiap tahun, kami membuka pintu bagi mahasiswa UGM baru — dari semua jurusan dan
-          semua latar belakang — untuk bergabung dan menemukan versi terbaik diri mereka
-          dalam balutan seragam kebanggaan merah-putih.
+          Setiap tahun, kami membuka pintu bagi mahasiswa UGM dari semua jurusan dan latar
+          belakang. Di sini, mereka dapat bertumbuh dan menemukan versi terbaik dirinya
+          dalam balutan seragam kebanggaan merah putih.
         </p>
       </div>
     </section>
@@ -231,7 +231,7 @@ function GalleryCta({ open }: { open: boolean }) {
         </div>
         {open ? (
           <Link className={styles.ctaButton} href="/daftar">
-            Mulai Pendaftaran <span aria-hidden="true">→</span>
+            Mulai Pendaftaran
           </Link>
         ) : (
           <span className={styles.ctaDisabled}>Pendaftaran Sedang Ditutup</span>

@@ -30,7 +30,7 @@ export function ResyncButton({ id }: { id: string }) {
       disabled={pending}
       style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}
     >
-      {pending ? "Menyinkron..." : failed ? "Gagal, ulangi" : "Resync"}
+      {pending ? "Menyinkronkan" : failed ? "Gagal, coba lagi" : "Sinkronkan ulang"}
     </button>
   );
 }
