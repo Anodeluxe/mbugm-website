@@ -617,25 +617,16 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             </p>
             <div className="space-y-4">
               <Field label="ID Line">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray text-sm font-body select-none"></span>
-                  <input {...field("idLine")} className="pl-11" placeholder="idlinekamu" />
-                </div>
+                <input {...field("idLine")} placeholder="idlinekamu" />
               </Field>
               <Field label="Instagram">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray text-sm font-body select-none"></span>
-                  <input {...field("idInstagram")} className="pl-7" placeholder="@usernamekamu" />
-                </div>
+                <input {...field("idInstagram")} placeholder="@usernamekamu" />
               </Field>
               <Field label="Facebook">
                 <input {...field("idFacebook")} placeholder="username Facebook" />
               </Field>
               <Field label="X (Twitter)">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray text-sm font-body select-none"></span>
-                  <input {...field("idTwitter")} className="pl-7" placeholder="@usernamekamu" />
-                </div>
+                <input {...field("idTwitter")} placeholder="@usernamekamu" />
               </Field>
             </div>
           </fieldset>
