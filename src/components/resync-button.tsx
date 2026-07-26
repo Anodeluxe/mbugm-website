@@ -9,7 +9,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { resyncApplicant } from "@/server/actions/resync-applicant";
 
-export function ResyncButton({ id }: { id: string }) {
+export function ResyncButton({ id, className }: { id: string; className?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [failed, setFailed] = useState(false);
@@ -24,13 +24,8 @@ export function ResyncButton({ id }: { id: string }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={pending}
-      style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}
-    >
-      {pending ? "Menyinkronkan" : failed ? "Gagal, coba lagi" : "Sinkronkan ulang"}
+    <button type="button" onClick={handleClick} disabled={pending} className={className}>
+      {pending ? "Menyinkronkan…" : failed ? "Gagal, ulangi" : "Resync"}
     </button>
   );
 }

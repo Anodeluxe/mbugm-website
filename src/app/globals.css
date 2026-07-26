@@ -7,31 +7,18 @@
   --color-parchment: #E8E6BF;
   --color-paper: #FBFAF4;
   --color-ink: #221E1B;
+  --color-ivory: #F5F4E3;
   --color-warm-gray: #6B6459;
   --color-border: #D8D3BE;
+
+  /* Admin/login tints */
+  --color-error-tint: #FCEBEB;
+  --color-error-border: #EFC7C7;
+  --color-badge-ok: #57511F;
 
   /* Typography */
   --font-display: 'Fraunces', Georgia, serif;
   --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
-}
-
-html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 5.75rem;
-}
-
-@media (max-width: 720px) {
-  html {
-    scroll-padding-top: 5.25rem;
-  }
-}
-
-/* Force light mode — no dark-mode flip */
-body {
-  background: #FBFAF4;
-  color: #221E1B;
-  font-family: var(--font-body);
-  line-height: 1.65;
 }
 
 /* Drill-dot texture — radial dot grid referencing marching band field formations */
@@ -39,6 +26,30 @@ body {
   background-image: radial-gradient(circle, #AD2829 1px, transparent 1px);
   background-size: 22px 22px;
 }
+
+/* Everything below is element-level defaults, so it MUST stay inside @layer base.
+   Unlayered CSS outranks every layered rule regardless of specificity — leave
+   these outside the layer and `button { font: inherit }` silently beats
+   `text-sm font-bold`, `select { display: block }` beats `hidden`, and so on. */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5.75rem;
+  }
+
+  @media (max-width: 720px) {
+    html {
+      scroll-padding-top: 5.25rem;
+    }
+  }
+
+  /* Force light mode — no dark-mode flip */
+  body {
+    background: #FBFAF4;
+    color: #221E1B;
+    font-family: var(--font-body);
+    line-height: 1.65;
+  }
 
 /* ── Form elements ── */
 fieldset {
@@ -157,6 +168,7 @@ button:focus-visible {
   outline: 2px solid #AD2829;
   outline-offset: 2px;
 }
+} /* end @layer base */
 
 /* Respect reduced-motion: kill smooth-scroll, spinners, and transitions */
 @media (prefers-reduced-motion: reduce) {

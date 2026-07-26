@@ -10,7 +10,19 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { resyncUnsyncedBatch } from "@/server/actions/resync-all";
 
-export function ResyncAllButton({ unsyncedCount }: { unsyncedCount: number }) {
+export function ResyncAllButton({
+  unsyncedCount,
+  className,
+  idleLabel,
+  doneClassName,
+  statusClassName,
+}: {
+  unsyncedCount: number;
+  className?: string;
+  idleLabel?: string;
+  doneClassName?: string;
+  statusClassName?: string;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState<string | null>(null);
@@ -37,23 +49,28 @@ export function ResyncAllButton({ unsyncedCount }: { unsyncedCount: number }) {
   }
 
   if (unsyncedCount === 0) {
-    return (
-      <span style={{ fontSize: "0.85rem", color: "#1e7e34" }}>
-        Semua data telah tersinkron
-      </span>
-    );
+    return <span className={doneClassName}>Semua data tersinkron</span>;
   }
 
   return (
-    <span>
-      <button type="button" onClick={run} disabled={pending}>
-        {pending ? "Menyinkronkan" : `Sinkronkan semua (${unsyncedCount})`}
+    <>
+      <button type="button" onClick={run} disabled={pending} className={className}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path
+            d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        {pending ? "Menyinkronkan…" : (idleLabel ?? `Resync ${unsyncedCount}`)}
       </button>
-      {status && (
-        <span style={{ marginLeft: "0.75rem", fontSize: "0.8rem", color: "#555" }}>
-          {status}
-        </span>
-      )}
-    </span>
+      {/* Mounted even when empty — a live region added in the same commit as its
+          text is usually not announced at all. */}
+      <p role="status" className={statusClassName}>
+        {status}
+      </p>
+    </>
   );
 }
