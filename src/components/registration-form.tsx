@@ -291,6 +291,12 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       },
       8: () => (!paymentProof ? 'Kolom "Bukti Pembayaran" wajib diisi.' : null),
       9: () => {
+        // No sessions seeded at all — this is a setup problem, not something the
+        // applicant can fix by picking harder. Say so instead of asking them to
+        // choose from an empty list.
+        if (sessions.length === 0) {
+          return "Sesi penempatan belum tersedia. Hubungi panitia — pendaftaran belum bisa dikirim.";
+        }
         if (!selectedSession) return "Pilih sesi penempatan yang tersedia.";
         if (selectedSession.bookedCount >= selectedSession.quota) {
           return "Sesi yang dipilih sudah penuh. Silakan pilih sesi lain.";
@@ -862,8 +868,12 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-4 rounded-lg bg-parchment/40 px-4 py-3 text-sm text-warm-gray">
-                    Belum ada sesi penempatan yang tersedia.
+                  <p
+                    role="alert"
+                    className="mt-4 rounded-lg border border-crimson/20 bg-crimson/5 px-4 py-3 text-sm text-crimson"
+                  >
+                    Belum ada sesi penempatan yang tersedia. Pendaftaran belum bisa
+                    dikirim — silakan hubungi panitia.
                   </p>
                 )}
               </div>
@@ -950,7 +960,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           ) : (
             <button
               type="submit"
-              disabled={status.state === "submitting" || !turnstileToken}
+              disabled={status.state === "submitting" || !turnstileToken || sessions.length === 0}
               className="px-6 py-2.5 bg-crimson hover:bg-crimson-press text-paper font-body font-semibold rounded-md text-sm transition-colors disabled:opacity-45 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {status.state === "submitting" ? (
