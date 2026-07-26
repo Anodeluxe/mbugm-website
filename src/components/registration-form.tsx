@@ -291,9 +291,6 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       },
       8: () => (!paymentProof ? 'Kolom "Bukti Pembayaran" wajib diisi.' : null),
       9: () => {
-        // No sessions seeded at all — this is a setup problem, not something the
-        // applicant can fix by picking harder. Say so instead of asking them to
-        // choose from an empty list.
         if (sessions.length === 0) {
           return "Sesi penempatan belum tersedia. Hubungi panitia — pendaftaran belum bisa dikirim.";
         }
