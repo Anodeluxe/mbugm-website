@@ -62,12 +62,20 @@ export default async function LoginPage({
         </p>
 
         {error && (
-          <div className="mt-5 flex items-start gap-2 rounded-lg border border-error-border bg-error-tint px-[14px] py-[11px] text-left text-[12.5px] font-semibold text-crimson max-[720px]:mt-[18px]">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="mt-px shrink-0">
+          <div
+            role="alert"
+            className="mt-5 flex items-start gap-2 rounded-lg border border-error-border bg-error-tint px-[14px] py-[11px] text-left text-[12.5px] text-crimson max-[720px]:mt-[18px]"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="mt-[3px] shrink-0">
               <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.6" />
               <path d="M8 5v3.4M8 10.8v.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
-            Email ini tidak memiliki akses admin.
+            <span>
+              <strong className="font-extrabold">Gunakan Akun Google Admin!</strong>
+              <span className="mt-0.5 block font-semibold text-warm-gray">
+                Akun yang kamu pilih tidak punya akses ke panel admin.
+              </span>
+            </span>
           </div>
         )}
 

@@ -14,8 +14,10 @@ const allowedEmails = (process.env.ADMIN_ALLOWED_EMAILS ?? "")
   .filter(Boolean);
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [Google], // reads AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET automatically
-  pages: { signIn: "/login" },
+  providers: [
+    Google({ authorization: { params: { prompt: "select_account" } } }),
+  ],
+  pages: { signIn: "/login", error: "/login" },
   callbacks: {
     // Return false to deny login. Only allowlisted club emails get in.
     signIn({ profile }) {
