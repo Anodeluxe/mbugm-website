@@ -5,7 +5,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { signIn } from "@/auth";
+import { redirect } from "next/navigation";
+import { auth, signIn } from "@/auth";
 
 export const metadata = { title: "Masuk · Admin MBUGM" };
 
@@ -14,7 +15,8 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const { error } = await searchParams;
+  const [session, { error }] = await Promise.all([auth(), searchParams]);
+  if (session) redirect("/admin");
 
   return (
     <main className="relative flex flex-1 items-center justify-center bg-ivory px-5 py-16 overflow-hidden">
