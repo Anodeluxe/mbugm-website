@@ -53,8 +53,8 @@ export function SiteHeader({ open }: { open: boolean }) {
 
         <div className={styles.navLinks}>
           <Link href="/#prestasi">Prestasi</Link>
-          <Link href="/#lokasi">Lokasi</Link>
           <Link href="/#tentang">Tentang</Link>
+          <Link href="/#lokasi">Lokasi</Link>
           {open ? (
             <Link className={styles.navCta} href="/daftar">Daftar Sekarang</Link>
           ) : (
@@ -79,8 +79,8 @@ export function SiteHeader({ open }: { open: boolean }) {
 
         <nav className={styles.drawerNav} aria-label="Navigasi seluler">
           <Link href="/#prestasi" onClick={closeMenu}>Prestasi</Link>
-          <Link href="/#lokasi" onClick={closeMenu}>Lokasi</Link>
           <Link href="/#tentang" onClick={closeMenu}>Tentang</Link>
+          <Link href="/#lokasi" onClick={closeMenu}>Lokasi</Link>
           {open ? (
             <Link className={styles.drawerCta} href="/daftar" onClick={closeMenu}>
               Daftar Sekarang
