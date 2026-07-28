@@ -2,7 +2,7 @@
 
 "use server";
 
-import { count, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { db } from "@/server/db";
 import { applicants, sessions, type Applicant } from "@/server/db/schema";
@@ -140,16 +140,6 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
     return { ok: false, error: "Sesi penempatan tidak ditemukan. Silakan pilih sesi lain." };
   }
 
-  // ponytail: count-then-insert can race on the final slot; use an atomic
-  // reservation or row lock if simultaneous high-volume submits become likely.
-  const [{ value: bookedCount }] = await db
-    .select({ value: count() })
-    .from(applicants)
-    .where(eq(applicants.sessionId, data.sessionId));
-  if (bookedCount >= selectedSession.quota) {
-    return { ok: false, error: "Sesi penempatan sudah penuh. Silakan pilih sesi lain." };
-  }
-
   // 7. INSERT (full row returned for the sync).
   let inserted;
   try {
@@ -201,7 +191,16 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
       .returning();
     inserted = row;
   } catch (err) {
-    const e = err as { code?: string; detail?: string };
+    const wrapped = err as {
+      code?: string;
+      detail?: string;
+      constraint?: string;
+      cause?: { code?: string; detail?: string; constraint?: string };
+    };
+    const e = wrapped.cause ?? wrapped;
+    if (e.code === "23514" && e.constraint === "session_quota_not_exceeded") {
+      return { ok: false, error: "Sesi penempatan sudah penuh. Silakan pilih sesi lain." };
+    }
     if (e.code === "23505") {
       const detail = e.detail ?? "";
       if (detail.includes("nim")) return { ok: false, error: "NIM ini sudah terdaftar." };
