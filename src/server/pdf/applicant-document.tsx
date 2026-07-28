@@ -34,7 +34,9 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderColor: C.border, borderRadius: 8, padding: 14 },
 
   header: { flexDirection: "row", marginBottom: 8 },
-  logoSlot: { width: 104, height: 92, borderRadius: 6, marginRight: 14, objectFit: "cover" },
+  // "contain", not "cover": the crest is portrait and the slot is landscape,
+  // so cover would crop the top and bottom off the lockup.
+  logoSlot: { width: 104, height: 92, borderRadius: 6, marginRight: 14, objectFit: "contain" },
   headerRight: { flex: 1, justifyContent: "center" },
   title: {
     fontSize: 20,

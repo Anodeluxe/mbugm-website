@@ -571,7 +571,7 @@
 }
 
 @media (min-width: 1051px) and (hover: hover) and (pointer: fine) {
-  .arena, .brass, .family, .drillDots {
+  .arena, .brass, .family {
     transform: translate3d(var(--hero-far-x), var(--hero-far-y), 0);
     transition: transform 420ms cubic-bezier(.16, 1, .3, 1);
   }
@@ -659,18 +659,7 @@
 .footerTop { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 90px; }
 
 .footerBrand > div { display: flex; align-items: center; gap: 12px; }
-.footerBrand > div span {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  background: var(--red);
-  font-family: var(--font-display);
-  font-size: .82rem;
-  font-weight: 800;
-}
+.footerBrand > div img { width: 52px; height: 52px; object-fit: contain; }
 .footerBrand strong { font-family: var(--font-display); font-size: 1.25rem; }
 .footerBrand p {
   max-width: 520px;
@@ -826,7 +815,7 @@
     transform: translateX(-50%);
   }
   .brand img { width: 46px; height: 46px; }
-  .brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .brand span { display: none; }
   .navLinks { display: none; }
   .mobileMenuButton { display: inline-flex; position: absolute; left: 0; }
 
@@ -1172,12 +1161,7 @@
   }
   .footerTop { gap: 4.3956vw; }
   .footerBrand > div { gap: .7326vw; }
-  .footerBrand > div span {
-    width: 2.0513vw;
-    height: 2.0513vw;
-    border-radius: .293vw;
-    font-size: .6593vw;
-  }
+  .footerBrand > div img { width: 3.2967vw; height: 3.2967vw; }
   .footerBrand strong { font-size: 1.1722vw; }
   .footerBrand p {
     max-width: 29.304vw;

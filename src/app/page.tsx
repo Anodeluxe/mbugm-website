@@ -246,14 +246,22 @@ function Footer() {
     <footer className={styles.footer}>
       <div className={styles.footerTop}>
         <div className={styles.footerBrand}>
-          <div><span>MB</span><strong>Marching Band UGM</strong></div>
+          <div>
+            <Image
+              src="/figma/brand-lockup.png"
+              alt=""
+              width={52}
+              height={52}
+              unoptimized
+            />
+            <strong>Marching Band UGM</strong>
+          </div>
           <p>Unit Kegiatan Mahasiswa Universitas Gadjah Mada. Berdiri 11 Maret 1979.</p>
         </div>
         <div className={styles.footerColumn}>
           <p>Navigasi</p>
-          <a href="#tentang">Tentang</a>
-          <a href="#kegiatan">Kegiatan</a>
           <a href="#prestasi">Prestasi</a>
+          <a href="#tentang">Tentang</a>
           <a href="#lokasi">Lokasi</a>
         </div>
         <div className={styles.footerColumn}>
