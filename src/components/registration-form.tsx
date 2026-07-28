@@ -108,6 +108,7 @@ function isValidEmail(value: string) {
 }
 
 type DraftPayload = {
+  submissionToken?: string;
   values: FormValues;
   currentStep: number;
   pasFoto: File | null;
@@ -184,7 +185,7 @@ async function clearDraft() {
 }
 
 export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
-  const [submissionToken] = useState(() => crypto.randomUUID());
+  const [submissionToken, setSubmissionToken] = useState(() => crypto.randomUUID());
   const [formLoadedAt] = useState(() => Date.now());
   const [turnstileToken, setTurnstileToken] = useState("");
   const turnstileRef = useRef<TurnstileInstance | null>(null);
@@ -236,6 +237,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         const draft = await readDraft();
         if (!active) return;
         if (draft) {
+          if (draft.submissionToken) setSubmissionToken(draft.submissionToken);
           setValues(draft.values);
           setCurrentStep(Math.max(0, Math.min(draft.currentStep, TOTAL_STEPS - 1)));
           setPasFoto(draft.pasFoto);
@@ -261,6 +263,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     const timeout = window.setTimeout(() => {
       setDraftStatus("saving");
       void writeDraft({
+        submissionToken,
         values,
         currentStep,
         pasFoto,
@@ -273,7 +276,16 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     }, SAVE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeout);
-  }, [draftReady, values, currentStep, pasFoto, ktm, paymentProof, status.state]);
+  }, [
+    draftReady,
+    submissionToken,
+    values,
+    currentStep,
+    pasFoto,
+    ktm,
+    paymentProof,
+    status.state,
+  ]);
 
   function validateStep(step: number): string | null {
     const missingField = REQUIRED_PER_STEP[step]?.find((key) => !values[key]?.trim());

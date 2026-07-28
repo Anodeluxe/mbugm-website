@@ -8,12 +8,14 @@
 // (with the bulk actions moved into a sticky bottom bar so they stay reachable).
 
 import Link from "next/link";
-import { and, or, ilike, eq, desc, count } from "drizzle-orm";
+import { and, or, ilike, desc, count } from "drizzle-orm";
 import { db } from "@/server/db";
 import { applicants } from "@/server/db/schema";
 import { config } from "@/lib/config";
 import { ResyncButton } from "@/components/resync-button";
 import { ResyncAllButton } from "@/components/resync-all-button";
+import { applicantNeedsGoogleSync } from "@/server/google/sync";
+import { isApplicantDriveComplete } from "@/server/google/sync-integrity.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -57,10 +59,7 @@ export default async function AdminHome({
 }) {
   const { q, filter } = await searchParams;
 
-  const unsynced = or(
-    eq(applicants.driveSynced, false),
-    eq(applicants.sheetSynced, false),
-  );
+  const unsynced = applicantNeedsGoogleSync();
 
   // Total unsynced (across everyone, not just the filtered view) for the bulk button.
   const [{ value: unsyncedCount }] = await db
@@ -262,7 +261,7 @@ export default async function AdminHome({
               <td className={`${TD} text-[13.5px] font-semibold`}>{a.namaLengkap}</td>
               <td className={`${TD} text-[13px] whitespace-nowrap text-warm-gray`}>{a.nim}</td>
               <td className={TD}>
-                <Badge ok={a.driveSynced} />
+                <Badge ok={isApplicantDriveComplete(a)} />
               </td>
               <td className={TD}>
                 <Badge ok={a.sheetSynced} />
@@ -294,7 +293,7 @@ export default async function AdminHome({
       {/* ── Mobile: the same rows as cards ── */}
       <div className="flex flex-col gap-2.5 pt-4 pb-24 min-[721px]:hidden">
         {rows.map((a) => {
-          const allSynced = a.driveSynced && a.sheetSynced;
+          const allSynced = isApplicantDriveComplete(a) && a.sheetSynced;
           return (
             <div key={a.id} className="rounded-lg border border-border bg-white p-3.5">
               <div className="flex items-baseline justify-between gap-2">

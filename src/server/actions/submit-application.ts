@@ -5,7 +5,7 @@
 import { count, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { db } from "@/server/db";
-import { applicants, sessions } from "@/server/db/schema";
+import { applicants, sessions, type Applicant } from "@/server/db/schema";
 import { applicantSchema } from "@/server/validation/applicant";
 import { verifyTurnstileToken } from "@/server/turnstile";
 import { syncApplicantToGoogle } from "@/server/google/sync";
@@ -26,6 +26,28 @@ function generateReferenceNumber(): string {
 
 function isUploadedFile(v: FormDataEntryValue | null): v is File {
   return typeof v === "object" && v !== null && "arrayBuffer" in v && (v as File).size > 0;
+}
+
+async function finishGoogleSync(
+  applicant: Applicant,
+  images: { pasFoto: Buffer; ktm: Buffer; paymentProof: Buffer },
+  duplicate = false,
+): Promise<SubmitResult> {
+  try {
+    await syncApplicantToGoogle(applicant, images);
+    return {
+      ok: true,
+      referenceNumber: applicant.referenceNumber,
+      ...(duplicate ? { duplicate: true } : {}),
+    };
+  } catch (error) {
+    console.error("Google sync failed for", applicant.referenceNumber, error);
+    return {
+      ok: false,
+      error:
+        "Data utama sudah tersimpan, tetapi sinkronisasi belum selesai. Jangan tutup halaman. Selesaikan verifikasi CAPTCHA lalu kirim lagi.",
+    };
+  }
 }
 
 export async function submitApplication(formData: FormData): Promise<SubmitResult> {
@@ -89,13 +111,18 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
   } catch {
     return { ok: false, error: "Gambar tidak dapat diproses. Pastikan file berupa foto." };
   }
+  const imageBuffers = {
+    pasFoto: pasFotoBuf,
+    ktm: ktmBuf,
+    paymentProof: paymentProofBuf,
+  };
 
   // 5. IDEMPOTENCY.
   const existingByToken = await db.query.applicants.findFirst({
     where: eq(applicants.submissionToken, data.submissionToken),
   });
   if (existingByToken) {
-    return { ok: true, referenceNumber: existingByToken.referenceNumber, duplicate: true };
+    return finishGoogleSync(existingByToken, imageBuffers, true);
   }
 
   // 6. FRIENDLY DUPLICATE CHECK on NIM.
@@ -182,7 +209,7 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
         const saved = await db.query.applicants.findFirst({
           where: eq(applicants.submissionToken, data.submissionToken),
         });
-        if (saved) return { ok: true, referenceNumber: saved.referenceNumber, duplicate: true };
+        if (saved) return finishGoogleSync(saved, imageBuffers, true);
       }
       return { ok: false, error: "Terjadi kesalahan, silakan coba lagi." };
     }
@@ -190,18 +217,7 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
     return { ok: false, error: "Terjadi kesalahan di server. Silakan coba lagi." };
   }
 
-  // 8. SIDE EFFECTS (best-effort). Pass the processed photo buffers so they
-  //    upload to Drive and embed into the PDF. A failure here doesn't fail the
-  //    registration — the resync button mops it up.
-  try {
-    await syncApplicantToGoogle(inserted, {
-      pasFoto: pasFotoBuf,
-      ktm: ktmBuf,
-      paymentProof: paymentProofBuf,
-    });
-  } catch (e) {
-    console.error("Google sync failed (will need resync):", e);
-  }
-
-  return { ok: true, referenceNumber: inserted.referenceNumber };
+  // 8. Only report success after every required document is durable in Drive.
+  //    Retrying with the same submission token resumes any missing sync steps.
+  return finishGoogleSync(inserted, imageBuffers);
 }

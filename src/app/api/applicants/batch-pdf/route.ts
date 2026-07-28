@@ -5,13 +5,14 @@
 // Admin only.
 
 import { NextResponse } from "next/server";
-import { and, or, ilike, eq, desc } from "drizzle-orm";
+import { and, or, ilike, desc } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/server/db";
 import { applicants } from "@/server/db/schema";
 import { renderApplicantPdf } from "@/server/pdf/render";
 import { downloadFile } from "@/server/google/drive";
 import { mergePdfs } from "@/server/pdf/merge";
+import { applicantNeedsGoogleSync } from "@/server/google/sync";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // give the merge room (Vercel free-tier ceiling)
@@ -57,9 +58,7 @@ export async function GET(req: Request) {
     );
   }
   if (filter === "unsynced") {
-    conditions.push(
-      or(eq(applicants.driveSynced, false), eq(applicants.sheetSynced, false)),
-    );
+    conditions.push(applicantNeedsGoogleSync());
   }
   const where = conditions.length ? and(...conditions) : undefined;
 
