@@ -392,12 +392,11 @@
 }
 
 .stats {
-  min-height: 960px;
+  height: 960px;
   position: relative;
   background: var(--red-dark);
   color: var(--ivory);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
 }
 
 .statsGrid {
@@ -426,20 +425,17 @@
   line-height: normal;
 }
 
-.statsStory {
-  max-width: 65ch;
-  padding: 136px 90px 100px 20px;
-  display: grid;
-  gap: 24px;
-  color: var(--ivory);
-  font-size: 1rem;
-  line-height: 1.75;
+.fieldLines {
+  width: 1193.1px;
+  height: 980.117px;
+  position: absolute;
+  top: -112px;
+  left: 1043px;
+  background: url("/figma/stats-field-lines.svg") center / 100% 100% no-repeat;
 }
 
-.statsStory p { margin: 0; }
-
 .about {
-  height: 728px;
+  min-height: 728px;
   padding: 136px 215px;
   background: var(--paper);
   display: grid;
@@ -715,6 +711,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 0;
   }
+  .fieldLines { right: -250px; left: auto; }
   .locationCard { width: 520px; }
 }
 
@@ -736,26 +733,18 @@
   }
   .lowerCollage { display: none; }
 
-  .stats {
-    min-height: 0;
-    padding: 72px 8vw 88px;
-    display: block;
-  }
+  .stats { height: 650px; min-height: 650px; }
   .statsGrid {
-    width: min(620px, 100%);
-    padding-top: 0;
-    margin: 0;
+    width: min(620px, 72%);
+    padding-top: 110px;
+    margin: 0 0 0 4vw;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 0;
     row-gap: 90px;
   }
   .statsGrid strong { font-size: 3.8rem; }
   .statsGrid span { font-size: .95rem; }
-  .statsStory {
-    max-width: 720px;
-    margin-top: 80px;
-    padding: 0;
-  }
+  .fieldLines { width: 420px; height: 650px; top: 120px; right: -260px; left: auto; }
 
   .about {
     height: auto;
@@ -854,22 +843,17 @@
   .brass { width: 62%; height: 34%; top: 66%; left: 4%; }
   .drillDots { width: 60%; left: 4%; }
 
-  .stats { padding: 72px 18px 80px; }
+  .stats { height: auto; min-height: 520px; }
   .statsGrid {
-    width: 100%;
-    padding: 0;
-    margin: 0;
+    width: calc(100% - 36px);
+    padding: 72px 0 88px;
+    margin: 0 auto;
     column-gap: 12px;
     row-gap: 80px;
   }
   .statsGrid strong { font-size: 3rem; }
   .statsGrid span { max-width: 140px; font-size: .8rem; line-height: 1.35; }
-  .statsStory {
-    margin-top: 64px;
-    gap: 18px;
-    font-size: .96rem;
-    line-height: 1.7;
-  }
+  .fieldLines { display: none; }
 
   .about { padding: 72px 18px; gap: 36px; }
   .aboutIntro h2 {
@@ -1044,8 +1028,8 @@
   }
 
   .stats {
-    min-height: 52.7473vw;
-    grid-template-columns: 50% 50%;
+    height: 52.7473vw;
+    min-height: 0;
   }
   .statsGrid {
     width: 42.5824vw;
@@ -1057,18 +1041,18 @@
   }
   .statsGrid strong { font-size: 3.5165vw; }
   .statsGrid span { font-size: 1.3187vw; }
-  .statsStory {
-    max-width: 65ch;
-    padding: 7.4725vw 5.5vw 5vw 1vw;
-    gap: 1.3187vw;
-    font-size: 1.0389vw;
-    line-height: 1.65;
+  .fieldLines {
+    width: 65.5531vw;
+    height: 53.8553vw;
+    top: -6.1538vw;
+    right: -18.315vw;
+    left: auto;
   }
 
   .about {
-    height: 38.6813vw;
-    min-height: 0;
-    padding: 7.4725vw 11.5751vw 0;
+    height: auto;
+    min-height: 38.6813vw;
+    padding: 7.4725vw 11.5751vw;
     grid-template-columns: 28.5714vw minmax(0, 1fr);
     gap: 6.0073vw;
   }

@@ -8,7 +8,16 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState, useCallback, useEffect } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import imageCompression from "browser-image-compression";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { submitApplication } from "@/server/actions/submit-application";
@@ -114,8 +123,24 @@ type DraftPayload = {
   pasFoto: File | null;
   ktm: File | null;
   paymentProof: File | null;
-  savedAt: number;
 };
+
+function hasDraftContent(
+  values: FormValues,
+  currentStep: number,
+  pasFoto: File | null,
+  ktm: File | null,
+  paymentProof: File | null,
+) {
+  return (
+    currentStep > 0 ||
+    Boolean(pasFoto || ktm || paymentProof) ||
+    Object.entries(values).some(
+      ([name, value]) =>
+        name !== "pernahMb" && name !== "website" && value.trim() !== "",
+    )
+  );
+}
 
 function openDraftDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -198,14 +223,23 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
-  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [draftStatus, setDraftStatus] = useState<
+    "idle" | "saving" | "saved" | "clearing" | "deleted" | "error"
+  >("idle");
   const sessionDays = groupPlacementSessions(sessions);
   const selectedSession = sessions.find((session) => String(session.id) === values.sessionId);
+  const hasDraft = hasDraftContent(
+    values,
+    currentStep,
+    pasFoto,
+    ktm,
+    paymentProof,
+  );
 
   const [status, setStatus] = useState<
     | { state: "idle" }
     | { state: "submitting" }
-    | { state: "success"; referenceNumber: string }
+    | { state: "success"; referenceNumber: string; draftCleared: boolean }
     | { state: "error"; message: string }
   >({ state: "idle" });
 
@@ -258,7 +292,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   }, []);
 
   useEffect(() => {
-    if (!draftReady || status.state === "success") return;
+    if (!draftReady || !hasDraft || status.state === "success") return;
 
     const timeout = window.setTimeout(() => {
       setDraftStatus("saving");
@@ -269,7 +303,6 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         pasFoto,
         ktm,
         paymentProof,
-        savedAt: Date.now(),
       })
         .then(() => setDraftStatus("saved"))
         .catch(() => setDraftStatus("error"));
@@ -284,6 +317,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     pasFoto,
     ktm,
     paymentProof,
+    hasDraft,
     status.state,
   ]);
 
@@ -334,6 +368,32 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     scrollToTop();
   }
 
+  async function handleClearDraft() {
+    const confirmed = window.confirm(
+      "Hapus seluruh isian dan berkas draf dari perangkat ini?",
+    );
+    if (!confirmed) return;
+
+    setDraftStatus("clearing");
+    try {
+      await clearDraft();
+      setSubmissionToken(crypto.randomUUID());
+      setValues(INITIAL);
+      setCurrentStep(0);
+      setPasFoto(null);
+      setKtm(null);
+      setPaymentProof(null);
+      setStepError(null);
+      setStatus({ state: "idle" });
+      setTurnstileToken("");
+      turnstileRef.current?.reset();
+      setDraftStatus("deleted");
+      scrollToTop();
+    } catch {
+      setDraftStatus("error");
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!pasFoto) return setStatus({ state: "error", message: "Mohon unggah pas foto." });
@@ -360,9 +420,23 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
       const result = await submitApplication(fd);
       if (result.ok) {
-        await clearDraft().catch(() => undefined);
-        setDraftStatus("idle");
-        setStatus({ state: "success", referenceNumber: result.referenceNumber });
+        let draftCleared = true;
+        try {
+          await clearDraft();
+        } catch {
+          draftCleared = false;
+        }
+
+        setValues(INITIAL);
+        setPasFoto(null);
+        setKtm(null);
+        setPaymentProof(null);
+        setDraftStatus(draftCleared ? "idle" : "error");
+        setStatus({
+          state: "success",
+          referenceNumber: result.referenceNumber,
+          draftCleared,
+        });
         scrollToTop();
       } else {
         setStatus({ state: "error", message: result.error });
@@ -403,6 +477,16 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           Pantau informasi lanjutan melalui email atau media sosial resmi{" "}
           <strong className="text-ink">@mbugm.official</strong>.
         </p>
+        {!status.draftCleared && (
+          <p
+            role="alert"
+            className="mt-5 rounded-lg border border-crimson/20 bg-crimson/5 px-4 py-3 font-body text-xs leading-relaxed text-crimson"
+          >
+            Pendaftaran tetap berhasil, tetapi draf di perangkat ini belum
+            terhapus. Hapus data situs melalui pengaturan browser jika perangkat
+            digunakan bersama.
+          </p>
+        )}
       </div>
     );
   }
@@ -444,12 +528,31 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             />
           ))}
         </div>
-        <p className="mt-3 text-center font-body text-xs text-warm-gray min-h-4">
-          {draftStatus === "saving" && "Menyimpan draf"}
-          {draftStatus === "saved" && "Draf tersimpan di perangkat ini."}
-          {draftStatus === "error" && "Draf gagal disimpan."}
-          {draftStatus === "idle" && "\u00A0"}
-        </p>
+        <div
+          className="mt-3 flex min-h-5 items-center justify-center gap-3 text-center font-body text-xs text-warm-gray"
+          aria-live="polite"
+        >
+          <span>
+            {draftStatus === "saving" && "Menyimpan draf"}
+            {draftStatus === "saved" && "Draf tersimpan di perangkat ini."}
+            {draftStatus === "clearing" && "Menghapus draf"}
+            {draftStatus === "deleted" && "Draf telah dihapus dari perangkat ini."}
+            {draftStatus === "error" && "Draf gagal diproses."}
+            {draftStatus === "idle" && "\u00A0"}
+          </span>
+          {hasDraft && draftStatus !== "deleted" && (
+            <button
+              type="button"
+              onClick={handleClearDraft}
+              disabled={
+                draftStatus === "clearing" || status.state === "submitting"
+              }
+              className="shrink-0 font-semibold text-crimson underline decoration-crimson/40 underline-offset-2 transition-colors hover:text-crimson-press disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Hapus draf
+            </button>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} noValidate>
@@ -992,15 +1095,30 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
 }) {
+  const controlId = useId();
+  const childArray = Children.toArray(children);
+  const controlIndex = childArray.findIndex((child) => isValidElement(child));
+  const labelledChildren = childArray.map((child, index) =>
+    index === controlIndex && isValidElement(child)
+      ? cloneElement(
+          child as React.ReactElement<{ id?: string }>,
+          { id: controlId },
+        )
+      : child,
+  );
+
   return (
     <div className="relative">
-      <label className="block font-body text-sm font-semibold text-ink mb-1.5">
+      <label
+        htmlFor={controlId}
+        className="block font-body text-sm font-semibold text-ink mb-1.5"
+      >
         {label}
         {required && (
           <span className="text-crimson ml-1" aria-label="wajib diisi">*</span>
         )}
       </label>
-      {children}
+      {labelledChildren}
     </div>
   );
 }
