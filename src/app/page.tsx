@@ -5,7 +5,8 @@ import { SiteHeader } from "@/components/site-header";
 import { config, isRegistrationOpen } from "@/lib/config";
 import styles from "./page.module.css";
 
-const registrationOpen = isRegistrationOpen();
+export const revalidate = 60;
+
 const googleMapsEmbedUrl =
   "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3031.8075272304286!2d110.3848214!3d-7.769798100000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7a59b469fe8cd7%3A0xc76dc4d1ec7572e2!2sStadion%20Pancasila%20UGM%20%E2%80%94%20Universitas%20Gajah%20Mada!5e1!3m2!1sid!2sid!4v1784517950509!5m2!1sid!2sid";
 const formatDate = (value: string) =>
@@ -34,6 +35,8 @@ const galleryImages = [
 ] as const;
 
 export default function Page() {
+  const registrationOpen = isRegistrationOpen();
+
   return (
     <div className={styles.page}>
       <SiteHeader open={registrationOpen} />
