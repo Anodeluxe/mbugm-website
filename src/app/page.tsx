@@ -130,45 +130,13 @@ function Stats() {
   ];
 
   return (
-    <section
-      id="prestasi"
-      className={styles.stats}
-      aria-label="Statistik dan kisah Marching Band UGM"
-    >
+    <section id="prestasi" className={styles.stats} aria-label="Statistik Marching Band UGM">
       <div className={styles.statsGrid}>
         {stats.map(([value, label]) => (
           <div key={label}><strong>{value}</strong><span>{label}</span></div>
         ))}
       </div>
-      <div className={styles.statsStory}>
-        <p>
-          Marching Band Universitas Gadjah Mada berdiri pada <strong>11 Maret 1979</strong>,
-          bermula dari unit <em>drum corps</em> kampus. Selama lebih dari empat dekade,
-          MBUGM telah berkembang menjadi salah satu unit marching band paling bergengsi di
-          Indonesia, dengan rekam jejak yang membanggakan secara nasional dan regional dari
-          berbagai kategori. MBUGM juga telah merajut nama besarnya melalui penampilan megah
-          di luar kompetisi, seperti Parade Senja di Gedung Agung Yogyakarta, Festival
-          Kesenian Yogyakarta, Gelanggang Expo, dan berbagai acara bergengsi lainnya.
-        </p>
-        <p>
-          MBUGM bukan sekadar komunitas pemain musik, piala, atau panggung, tetapi merupakan
-          tempat bagi setiap anggotanya untuk bertumbuh, berkembang, dan mengeksplorasi
-          potensi diri. MBUGM juga menjadi tempat untuk membangun keluarga baru, identitas
-          baru, dan relasi yang saling mendukung hingga ke seluruh penjuru negeri melalui
-          jejaring lebih dari 3.000 alumni aktif yang tetap terikat dengan keluarga besar ini.
-        </p>
-        <p>
-          MBUGM memberikan begitu banyak pengalaman dan pembelajaran baru, baik dalam
-          keorganisasian, manajemen diri, maupun persiapan menuju dunia profesional melalui
-          nilai kepemimpinan, disiplin, dan tanggung jawab yang menjadi budaya.
-        </p>
-        <p>
-          <strong>
-            Jadi, tunggu apa lagi? Mari bergabung dengan keluarga besar MBUGM dan temukan
-            potensi dalam dirimu bersama kami!
-          </strong>
-        </p>
-      </div>
+      <div className={styles.fieldLines} aria-hidden="true" />
     </section>
   );
 }
@@ -187,23 +155,32 @@ function About() {
       <div className={styles.aboutBody}>
         <p>
           Marching Band Universitas Gadjah Mada berdiri pada <strong>11 Maret 1979</strong>,
-          bermula sebagai unit <em>drum corps</em> kampus. Selama lebih dari empat dekade,
+          bermula dari unit <em>drum corps</em> kampus. Selama lebih dari empat dekade,
           MBUGM telah berkembang menjadi salah satu unit marching band paling bergengsi di
-          Indonesia. Rekam jejak kami mencakup gelar juara GPMB berulang kali dari 2010
-          hingga 2017, penampilan di Istana Negara, Gedung Agung, Festival Kesenian
-          Yogyakarta, dan berbagai acara internasional.
+          Indonesia - dengan rekam jejak yang membanggakan secara nasional dan regional dari
+          berbagai kategori. Selain itu, MBUGM juga telah merajut nama besarnya dalam
+          penampilan-penampilan megah di luar kompetisi seperti Parade Senja di Gedung Agung
+          Yogyakarta, Festival Kesenian Yogyakarta, Gelanggang Expo, dan berbagai acara
+          bergengsi lainnya.
         </p>
         <p>
-          MBUGM bukan hanya tentang piala atau panggung. Setiap anggota belajar tentang{" "}
-          <strong>kekeluargaan</strong>,{" "}
-          <strong>gotong royong</strong>, disiplin, dan tanggung jawab. Ikatan ini melampaui
-          masa kuliah dan membentuk komunitas alumni yang saling mendukung hingga ke seluruh
-          penjuru negeri.
+          MBUGM bukan hanya sekedar komunitas pemain musik, piala, atau panggung, tetapi
+          merupakan tempat bagi setiap anggotanya untuk bertumbuh, berkembang, dan
+          mengeksplor potensi dalam diri. MBUGM bukan hanya sekedar tempat untuk bermain
+          musik, tetapi juga tempat untuk membangun keluarga baru, identitas baru, dan relasi
+          yang saling mendukung hingga ke seluruh penjuru negeri berkat 3000 alumni aktif
+          yang masih terikat dengan keluarga besar ini.
         </p>
         <p>
-          Setiap tahun, kami membuka pintu bagi mahasiswa UGM dari semua jurusan dan latar
-          belakang. Di sini, mereka dapat bertumbuh dan menemukan versi terbaik dirinya
-          dalam balutan seragam kebanggaan merah putih.
+          MBUGM memberikan begitu banyak pengalaman dan pembelajaran baru baik dalam
+          keorganisasian, manajemen diri, hingga persiapan menuju dunia profesional - melalui
+          nilai kepemimpinan, disiplin, dan tanggung jawab yang menjadi budaya.
+        </p>
+        <p>
+          <strong>
+            Jadi, tunggu apalagi? Mari bergabung dengan keluarga besar MBUGM dan temukan
+            potensi dalam dirimu bersama kami!
+          </strong>
         </p>
       </div>
     </section>
