@@ -124,19 +124,51 @@ function HeroPhoto({
 function Stats() {
   const stats = [
     ["1979", "Tahun Berdiri"],
-    ["10x", "Juara GPMB Nasional"],
+    ["100+", "Juara Kompetisi Nasional dan Bergengsi"],
     ["46+", "Tahun Pengalaman"],
-    ["3000+", "Alumni Aktif"],
+    ["3000+", "Alumni Aktif di Seluruh Indonesia"],
   ];
 
   return (
-    <section id="prestasi" className={styles.stats} aria-label="Statistik Marching Band UGM">
+    <section
+      id="prestasi"
+      className={styles.stats}
+      aria-label="Statistik dan kisah Marching Band UGM"
+    >
       <div className={styles.statsGrid}>
         {stats.map(([value, label]) => (
           <div key={label}><strong>{value}</strong><span>{label}</span></div>
         ))}
       </div>
-      <div className={styles.fieldLines} aria-hidden="true"><span /><span /><span /></div>
+      <div className={styles.statsStory}>
+        <p>
+          Marching Band Universitas Gadjah Mada berdiri pada <strong>11 Maret 1979</strong>,
+          bermula dari unit <em>drum corps</em> kampus. Selama lebih dari empat dekade,
+          MBUGM telah berkembang menjadi salah satu unit marching band paling bergengsi di
+          Indonesia, dengan rekam jejak yang membanggakan secara nasional dan regional dari
+          berbagai kategori. MBUGM juga telah merajut nama besarnya melalui penampilan megah
+          di luar kompetisi, seperti Parade Senja di Gedung Agung Yogyakarta, Festival
+          Kesenian Yogyakarta, Gelanggang Expo, dan berbagai acara bergengsi lainnya.
+        </p>
+        <p>
+          MBUGM bukan sekadar komunitas pemain musik, piala, atau panggung, tetapi merupakan
+          tempat bagi setiap anggotanya untuk bertumbuh, berkembang, dan mengeksplorasi
+          potensi diri. MBUGM juga menjadi tempat untuk membangun keluarga baru, identitas
+          baru, dan relasi yang saling mendukung hingga ke seluruh penjuru negeri melalui
+          jejaring lebih dari 3.000 alumni aktif yang tetap terikat dengan keluarga besar ini.
+        </p>
+        <p>
+          MBUGM memberikan begitu banyak pengalaman dan pembelajaran baru, baik dalam
+          keorganisasian, manajemen diri, maupun persiapan menuju dunia profesional melalui
+          nilai kepemimpinan, disiplin, dan tanggung jawab yang menjadi budaya.
+        </p>
+        <p>
+          <strong>
+            Jadi, tunggu apa lagi? Mari bergabung dengan keluarga besar MBUGM dan temukan
+            potensi dalam dirimu bersama kami!
+          </strong>
+        </p>
+      </div>
     </section>
   );
 }
