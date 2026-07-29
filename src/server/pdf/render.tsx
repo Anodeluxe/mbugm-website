@@ -7,6 +7,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { renderToBuffer } from "@react-pdf/renderer";
 import type { Applicant } from "@/server/db/schema";
+import { getPlacementSessionLabel } from "@/server/placement-session";
 import { ApplicantDocument } from "./applicant-document";
 
 // Load /public/logo.png once and reuse it as a data URI. Returns undefined if
@@ -27,7 +28,10 @@ export async function renderApplicantPdf(
   applicant: Applicant,
   opts?: { pasFoto?: string; ktm?: string; paymentProof?: string },
 ): Promise<Buffer> {
-  const logo = await getLogo();
+  const [logo, placementSession] = await Promise.all([
+    getLogo(),
+    getPlacementSessionLabel(applicant.sessionId),
+  ]);
   return renderToBuffer(
     <ApplicantDocument
       applicant={applicant}
@@ -35,6 +39,7 @@ export async function renderApplicantPdf(
       pasFoto={opts?.pasFoto}
       ktm={opts?.ktm}
       paymentProof={opts?.paymentProof}
+      placementSession={placementSession}
     />,
   );
 }

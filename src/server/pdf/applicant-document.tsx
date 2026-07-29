@@ -177,12 +177,14 @@ export function ApplicantDocument({
   pasFoto,
   ktm,
   paymentProof,
+  placementSession,
 }: {
   applicant: Applicant;
   logo?: string;
   pasFoto?: string;
   ktm?: string;
   paymentProof?: string;
+  placementSession: string;
 }) {
   const dataDiri: [string, string][] = [
     ["Nama Lengkap", disp(a.namaLengkap)],
@@ -224,6 +226,7 @@ export function ApplicantDocument({
     ["Fakultas", disp(a.fakultas)],
     ["Program Studi", disp(a.prodi)],
     ["Nama Asal Sekolah (SMA/SMK)", disp(a.asalSma)],
+    ["Sesi Penempatan", placementSession],
   ];
 
   const tambahan: [string, string][] = [

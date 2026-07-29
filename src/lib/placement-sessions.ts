@@ -5,6 +5,13 @@ export function getPlacementSessionTime(dayLabel: string, sessionNo: number) {
     : "09.00 - 11.30 WIB";
 }
 
+export function formatPlacementSession(
+  session?: { dayLabel: string; sessionNo: number } | null,
+) {
+  if (!session) return "-";
+  return `${session.dayLabel}, Sesi ${session.sessionNo}, ${getPlacementSessionTime(session.dayLabel, session.sessionNo)}`;
+}
+
 export function groupPlacementSessions<T extends { dayLabel: string }>(sessions: readonly T[]) {
   const groups = new Map<string, T[]>();
   for (const session of sessions) {

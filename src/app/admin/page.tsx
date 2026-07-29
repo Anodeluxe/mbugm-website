@@ -8,10 +8,11 @@
 // (with the bulk actions moved into a sticky bottom bar so they stay reachable).
 
 import Link from "next/link";
-import { and, or, ilike, desc, count } from "drizzle-orm";
+import { and, or, ilike, desc, count, eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import { applicants } from "@/server/db/schema";
+import { applicants, sessions } from "@/server/db/schema";
 import { config } from "@/lib/config";
+import { getPlacementSessionTime } from "@/lib/placement-sessions";
 import { ResyncButton } from "@/components/resync-button";
 import { ResyncAllButton } from "@/components/resync-all-button";
 import { applicantNeedsGoogleSync } from "@/server/google/sync";
@@ -87,8 +88,15 @@ export default async function AdminHome({
   const where = conditions.length ? and(...conditions) : undefined;
 
   const rows = await db
-    .select()
+    .select({
+      applicant: applicants,
+      placementSession: {
+        dayLabel: sessions.dayLabel,
+        sessionNo: sessions.sessionNo,
+      },
+    })
     .from(applicants)
+    .leftJoin(sessions, eq(applicants.sessionId, sessions.id))
     .where(where)
     .orderBy(desc(applicants.createdAt))
     .limit(1000);
@@ -244,6 +252,7 @@ export default async function AdminHome({
             <th className={TH}>No. Referensi</th>
             <th className={TH}>Nama</th>
             <th className={TH}>NIM</th>
+            <th className={TH}>Penempatan</th>
             <th className={TH}>Drive</th>
             <th className={TH}>Sheet</th>
             <th className={TH}>PDF</th>
@@ -251,7 +260,7 @@ export default async function AdminHome({
           </tr>
         </thead>
         <tbody>
-          {rows.map((a) => (
+          {rows.map(({ applicant: a, placementSession }) => (
             <tr key={a.id} className="transition-colors duration-150 hover:bg-ivory">
               <td
                 className={`${TD} text-[13px] font-semibold tracking-[0.02em] whitespace-nowrap text-crimson-press`}
@@ -260,6 +269,24 @@ export default async function AdminHome({
               </td>
               <td className={`${TD} text-[13.5px] font-semibold`}>{a.namaLengkap}</td>
               <td className={`${TD} text-[13px] whitespace-nowrap text-warm-gray`}>{a.nim}</td>
+              <td className={`${TD} min-w-[190px]`}>
+                {placementSession ? (
+                  <>
+                    <p className="text-[12.5px] font-semibold leading-snug">
+                      {placementSession.dayLabel}
+                    </p>
+                    <p className="mt-0.5 text-[11.5px] leading-snug text-warm-gray">
+                      Sesi {placementSession.sessionNo},{" "}
+                      {getPlacementSessionTime(
+                        placementSession.dayLabel,
+                        placementSession.sessionNo,
+                      )}
+                    </p>
+                  </>
+                ) : (
+                  <span className="text-[12px] text-warm-gray">Belum dipilih</span>
+                )}
+              </td>
               <td className={TD}>
                 <Badge ok={isApplicantDriveComplete(a)} />
               </td>
@@ -282,7 +309,7 @@ export default async function AdminHome({
           ))}
           {rows.length === 0 && (
             <tr>
-              <td className={`${TD} text-[13px] text-warm-gray`} colSpan={7}>
+              <td className={`${TD} text-[13px] text-warm-gray`} colSpan={8}>
                 Tidak ada pendaftar yang cocok.
               </td>
             </tr>
@@ -292,7 +319,7 @@ export default async function AdminHome({
 
       {/* ── Mobile: the same rows as cards ── */}
       <div className="flex flex-col gap-2.5 pt-4 pb-24 min-[721px]:hidden">
-        {rows.map((a) => {
+        {rows.map(({ applicant: a, placementSession }) => {
           const allSynced = isApplicantDriveComplete(a) && a.sheetSynced;
           return (
             <div key={a.id} className="rounded-lg border border-border bg-white p-3.5">
@@ -308,6 +335,27 @@ export default async function AdminHome({
               </div>
               <p className="mt-1.5 mb-0.5 text-[15px] font-bold">{a.namaLengkap}</p>
               <p className="text-xs text-warm-gray">{a.nim}</p>
+              <div className="mt-2 border-t border-[#F0EDE0] pt-2">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-warm-gray">
+                  Penempatan
+                </p>
+                {placementSession ? (
+                  <>
+                    <p className="mt-1 text-[12.5px] font-semibold leading-snug">
+                      {placementSession.dayLabel}
+                    </p>
+                    <p className="mt-0.5 text-[11.5px] leading-snug text-warm-gray">
+                      Sesi {placementSession.sessionNo},{" "}
+                      {getPlacementSessionTime(
+                        placementSession.dayLabel,
+                        placementSession.sessionNo,
+                      )}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-xs text-warm-gray">Belum dipilih</p>
+                )}
+              </div>
               <div className="mt-3 flex gap-2 border-t border-[#F0EDE0] pt-2.5">
                 <Link
                   href={`/api/applicants/${a.id}/pdf`}
