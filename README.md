@@ -1,36 +1,184 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MBUGM Website
 
-## Getting Started
+Website Penerimaan Anggota Baru Marching Band Universitas Gadjah Mada 2026.
+Proyek ini mencakup homepage, formulir pendaftaran, login admin, pengelolaan
+pendaftar, PDF rangkuman, Google Drive, dan Google Sheets.
 
-First, run the development server:
+## Arsitektur
+
+| Bagian | Layanan |
+|---|---|
+| Aplikasi dan API | Next.js di Vercel |
+| Database | PostgreSQL di Neon |
+| Login admin | Auth.js dengan Google OAuth |
+| Dokumen | Google Drive |
+| Rekap | Google Sheets |
+| CAPTCHA | Cloudflare Turnstile |
+
+Aturan bisnis utama dicatat di [PRODUCT.md](./PRODUCT.md).
+
+## Persyaratan
+
+- Node.js 24
+- npm
+- Database PostgreSQL Neon
+- Google Cloud service account
+- Google OAuth client
+- Cloudflare Turnstile
+
+## Menjalankan secara lokal
+
+1. Pasang dependency.
+
+   ```bash
+   npm ci
+   ```
+
+2. Salin `.env.example` menjadi `.env.local`, lalu isi nilainya.
+
+3. Jalankan migration untuk database lokal atau development.
+
+   ```bash
+   npm run db:migrate
+   ```
+
+4. Jalankan aplikasi.
+
+   ```bash
+   npm run dev
+   ```
+
+5. Buka `http://localhost:3000`.
+
+Jangan commit `.env`, `.env.local`, private key, atau kredensial lain.
+
+## Environment variable
+
+| Nama | Wajib | Keterangan |
+|---|---|---|
+| `DATABASE_URL` | Ya | URL koneksi PostgreSQL Neon |
+| `AUTH_SECRET` | Ya | Secret acak untuk menandatangani sesi Auth.js |
+| `AUTH_GOOGLE_ID` | Ya | Client ID Google OAuth |
+| `AUTH_GOOGLE_SECRET` | Ya | Client secret Google OAuth |
+| `ADMIN_ALLOWED_EMAILS` | Ya | Email admin, dipisahkan koma |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Ya | Email service account |
+| `GOOGLE_PRIVATE_KEY` | Ya | Private key dengan baris baru ditulis sebagai `\n` |
+| `GOOGLE_DRIVE_FOLDER_ID` | Ya | Folder tujuan PDF |
+| `GOOGLE_DRIVE_IMAGES_FOLDER_ID` | Tidak | Folder gambar; menggunakan folder PDF jika kosong |
+| `GOOGLE_SHEET_ID` | Ya | ID spreadsheet rekap |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Ya | Site key yang boleh dikirim ke browser |
+| `TURNSTILE_SECRET_KEY` | Ya | Secret key yang hanya tersedia di server |
+| `LOCAL_FORM_MOCK` | Tidak | Isi `1` hanya untuk mock form saat development |
+
+Untuk Vercel, masukkan nilai production melalui Project Settings, bukan melalui
+file di repository. Perubahan environment variable baru berlaku pada deployment
+berikutnya.
+
+## Google OAuth
+
+Tambahkan callback berikut pada Google OAuth client:
+
+- Lokal: `http://localhost:3000/api/auth/callback/google`
+- Production: `https://DOMAIN-PRODUCTION/api/auth/callback/google`
+
+Hanya akun yang tercantum dalam `ADMIN_ALLOWED_EMAILS` yang dapat masuk ke
+`/admin`.
+
+## Google Drive dan Sheets
+
+1. Buat service account di Google Cloud.
+2. Bagikan folder Drive tujuan kepada `GOOGLE_SERVICE_ACCOUNT_EMAIL` sebagai
+   Editor.
+3. Bagikan spreadsheet tujuan kepada email yang sama sebagai Editor.
+4. Masukkan folder ID, spreadsheet ID, email, dan private key ke environment
+   variable.
+5. Kirim satu pendaftaran uji dan pastikan hasil berikut tersedia:
+   - pas foto;
+   - foto KTM;
+   - bukti pembayaran;
+   - PDF rangkuman;
+   - satu baris Google Sheets.
+
+Folder dan spreadsheet tidak perlu dibuat publik.
+
+## Database dan migration
+
+Migration tersimpan di folder `drizzle/` dan dijalankan berurutan oleh:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run db:migrate
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Migration penting:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `0003_seed_placement_sessions.sql` mengisi 14 sesi placement test.
+- `0004_enforce_session_quota.sql` memasang pengaman atomik kapasitas sesi.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Sebelum migration production:
 
-## Learn More
+1. Pastikan `DATABASE_URL` menunjuk database production yang benar.
+2. Buat backup atau branch Neon.
+3. Jalankan `npm run db:migrate` satu kali.
+4. Pastikan sesi tersedia di `/daftar`.
+5. Jangan menjalankan migration production dari CI atau pull request.
 
-To learn more about Next.js, take a look at the following resources:
+Jika migration perlu diperbaiki, pulihkan backup Neon atau buat migration
+lanjutan. Jangan mengubah migration yang sudah pernah diterapkan ke production.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Pemeriksaan
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Jalankan seluruh pemeriksaan lokal dengan:
 
-## Deploy on Vercel
+```bash
+npm run check
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Perintah tersebut menjalankan lint, assertion, dan production build. Assertion
+mencakup jadwal sesi, batas kapasitas, integritas sinkronisasi, batch PDF, serta
+validasi pendaftar.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Audit dependency production:
+
+```bash
+npm audit --omit=dev --audit-level=high
+```
+
+GitHub Actions menjalankan pemeriksaan yang sama pada pull request dan push ke
+`main`. Workflow hanya menggunakan nilai environment dummy dan tidak terhubung
+ke database, Drive, atau Sheet production.
+
+## Deployment production
+
+Checklist sebelum deployment:
+
+- CI lulus.
+- Environment variable Vercel lengkap.
+- Tanggal pendaftaran di `src/lib/config.ts` sudah benar.
+- Migration sudah diterapkan ke database yang benar.
+- Jadwal dan kapasitas sesi sudah diperiksa.
+- Folder Drive dan Sheet telah dibagikan kepada service account.
+- Callback Google OAuth sesuai domain production.
+
+Smoke test setelah deployment:
+
+1. Homepage dan `/daftar` dapat dibuka di desktop serta mobile.
+2. Status buka atau tutup pendaftaran sesuai tanggal.
+3. Login allowlist berhasil dan email lain ditolak.
+4. `/admin` tanpa sesi diarahkan ke `/login`.
+5. Endpoint PDF tanpa sesi mengembalikan `401`.
+6. Pendaftaran uji menghasilkan row database, tiga gambar, PDF, dan row Sheet.
+7. Hapus data uji setelah seluruh alur terverifikasi.
+
+## Rollback
+
+Untuk masalah aplikasi, kembalikan deployment stabil sebelumnya melalui
+Vercel. Rollback aplikasi tidak membatalkan migration database.
+
+Jika masalah berasal dari database:
+
+1. hentikan pendaftaran melalui tanggal di `src/lib/config.ts` jika diperlukan;
+2. pulihkan backup atau branch Neon;
+3. kembalikan deployment yang kompatibel dengan schema tersebut;
+4. lakukan smoke test ulang.
+
+Jangan menghapus data pendaftar atau menjalankan SQL rollback tanpa backup.
