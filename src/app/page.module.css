@@ -533,26 +533,19 @@
   flex: 1 1 0;
   min-width: 0;
   height: 100%;
+  margin: 0;
   padding: 0;
   border: 0;
   border-right: 10px solid var(--red);
   position: relative;
   overflow: hidden;
   background: var(--red);
-  cursor: zoom-in;
   transition-property: flex-grow, height;
   transition-duration: 1520ms;
   transition-timing-function: cubic-bezier(.22, 1, .36, 1);
 }
 
 .galleryItem:last-child { border-right: 0; }
-
-.galleryItem:focus-visible {
-  flex-grow: 3;
-  z-index: 1;
-  outline: 2px solid var(--paper);
-  outline-offset: -4px;
-}
 
 .galleryStrip img {
   object-fit: cover;
@@ -561,11 +554,6 @@
   transition-property: filter, transform;
   transition-duration: 1520ms;
   transition-timing-function: cubic-bezier(.22, 1, .36, 1);
-}
-
-.galleryItem:focus-visible img {
-  filter: grayscale(0) contrast(1);
-  transform: scale(1.012);
 }
 
 @media (min-width: 1051px) and (hover: hover) and (pointer: fine) {
@@ -1108,17 +1096,6 @@
     overflow: visible;
   }
   .galleryItem { border-right-width: .5128vw; }
-  .galleryItem:focus-visible {
-    height: 150%;
-    flex-grow: 5.5;
-    z-index: 2;
-  }
-  .galleryItem:focus-visible + .galleryItem,
-  .galleryItem:has(+ .galleryItem:focus-visible) {
-    height: 122%;
-    flex-grow: 3.25;
-    z-index: 1;
-  }
   .galleryCta { height: 58.3883vw; }
   .ctaCopy {
     height: 38.6813vw;
@@ -1192,12 +1169,5 @@
   .arena, .flag, .percussion, .brass, .family, .guard, .drillDots {
     transform: none;
     transition: none;
-  }
-}
-
-@media (hover: none) {
-  .galleryItem:focus img {
-    filter: grayscale(0) contrast(1);
-    transform: none;
   }
 }
