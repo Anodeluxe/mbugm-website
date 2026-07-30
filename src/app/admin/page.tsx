@@ -12,6 +12,7 @@ import { and, or, ilike, desc, count, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { applicants, sessions } from "@/server/db/schema";
 import { config } from "@/lib/config";
+import { PDF_BATCH_SIZE, getPdfBatchRange } from "@/lib/pdf-batch";
 import { getPlacementSessionTime } from "@/lib/placement-sessions";
 import { ResyncButton } from "@/components/resync-button";
 import { ResyncAllButton } from "@/components/resync-all-button";
@@ -86,6 +87,9 @@ export default async function AdminHome({
   }
   if (filter === "unsynced") conditions.push(unsynced);
   const where = conditions.length ? and(...conditions) : undefined;
+  const matchingTotal = where
+    ? (await db.select({ value: count() }).from(applicants).where(where))[0].value
+    : total;
 
   const rows = await db
     .select({
@@ -101,13 +105,14 @@ export default async function AdminHome({
     .orderBy(desc(applicants.createdAt))
     .limit(1000);
 
-  // Download link carries the active search/filter so you can scope the batch.
-  const batchParams = new URLSearchParams();
-  if (q && q.trim()) batchParams.set("q", q.trim());
-  if (filter === "unsynced") batchParams.set("filter", "unsynced");
-  const batchHref = `/api/applicants/batch-pdf${
-    batchParams.toString() ? `?${batchParams.toString()}` : ""
-  }`;
+  // Split large exports into predictable ranges that fit one server request.
+  const pdfBatches = Array.from(
+    { length: Math.ceil(matchingTotal / PDF_BATCH_SIZE) },
+    (_, index) => {
+      const page = index + 1;
+      return { page, ...getPdfBatchRange(page, matchingTotal) };
+    },
+  );
 
   // The mobile filter chips are plain links onto the same ?filter= param.
   const chipHref = (next?: "unsynced") => {
@@ -138,21 +143,40 @@ export default async function AdminHome({
         </div>
 
         <div className="flex flex-wrap justify-end gap-3 max-[720px]:hidden">
-          <a
-            href={batchHref}
-            className="inline-flex h-[42px] items-center gap-2 rounded-[4px] border-2 border-ink px-5 text-[13px] font-bold text-ink transition-colors duration-150 hover:bg-ink hover:text-paper"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            Unduh PDF gabungan
-          </a>
+          {pdfBatches.length > 0 && (
+            <form action="/api/applicants/batch-pdf" method="get" className="flex gap-2">
+              {q && <input type="hidden" name="q" value={q.trim()} />}
+              {filter === "unsynced" && <input type="hidden" name="filter" value="unsynced" />}
+              {pdfBatches.length > 1 && (
+                <select
+                  name="page"
+                  aria-label="Pilih rentang PDF"
+                  className="mt-0 h-[42px] w-auto text-[13px]"
+                >
+                  {pdfBatches.map(({ page, start, end }) => (
+                    <option key={page} value={page}>
+                      {start} - {end}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="submit"
+                className="inline-flex h-[42px] items-center gap-2 rounded-[4px] border-2 border-ink px-5 text-[13px] font-bold text-ink transition-colors duration-150 hover:bg-ink hover:text-paper"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path
+                    d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                Unduh PDF
+              </button>
+            </form>
+          )}
           <ResyncAllButton
             unsyncedCount={unsyncedCount}
             idleLabel={`Resync ${unsyncedCount} belum tersinkron`}
@@ -381,12 +405,31 @@ export default async function AdminHome({
 
       {/* Bulk actions follow you down the list on mobile */}
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap gap-2.5 border-t border-border bg-[rgba(251,250,244,.94)] px-4 py-3 backdrop-blur-[6px] min-[721px]:hidden">
-        <a
-          href={batchHref}
-          className="flex h-[46px] flex-1 items-center justify-center rounded-md border-2 border-ink text-[13px] font-bold text-ink transition-colors duration-150"
-        >
-          Unduh PDF
-        </a>
+        {pdfBatches.length > 0 && (
+          <form action="/api/applicants/batch-pdf" method="get" className="flex flex-1 gap-2">
+            {q && <input type="hidden" name="q" value={q.trim()} />}
+            {filter === "unsynced" && <input type="hidden" name="filter" value="unsynced" />}
+            {pdfBatches.length > 1 && (
+              <select
+                name="page"
+                aria-label="Pilih rentang PDF"
+                className="mt-0 h-[46px] w-[92px] shrink-0 px-2 text-[12px]"
+              >
+                {pdfBatches.map(({ page, start, end }) => (
+                  <option key={page} value={page}>
+                    {start} - {end}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              type="submit"
+              className="flex h-[46px] flex-1 items-center justify-center rounded-md border-2 border-ink px-3 text-[13px] font-bold text-ink transition-colors duration-150"
+            >
+              Unduh PDF
+            </button>
+          </form>
+        )}
         <ResyncAllButton
           unsyncedCount={unsyncedCount}
           idleLabel={`Resync ${unsyncedCount}`}

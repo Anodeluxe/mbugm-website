@@ -15,6 +15,16 @@ import { toDataUri } from "@/server/images";
 
 export const runtime = "nodejs";
 
+async function downloadImage(fileId: string | null, label: string) {
+  if (!fileId) return undefined;
+  try {
+    return toDataUri(await downloadFile(fileId));
+  } catch (error) {
+    console.error(`Could not load ${label} for PDF preview:`, error);
+    return undefined;
+  }
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -32,19 +42,12 @@ export async function GET(
     return new NextResponse("Pendaftar tidak ditemukan", { status: 404 });
   }
 
-  // Pull photos from Drive if they've been uploaded.
-  let pasFoto: string | undefined;
-  let ktm: string | undefined;
-  let paymentProof: string | undefined;
-  try {
-    if (applicant.pasFotoDriveId) pasFoto = toDataUri(await downloadFile(applicant.pasFotoDriveId));
-    if (applicant.fotoKtmDriveId) ktm = toDataUri(await downloadFile(applicant.fotoKtmDriveId));
-    if (applicant.paymentProofDriveId) {
-      paymentProof = toDataUri(await downloadFile(applicant.paymentProofDriveId));
-    }
-  } catch (e) {
-    console.error("Could not load photos for preview:", e);
-  }
+  // One broken Drive file must not prevent the other valid images from loading.
+  const [pasFoto, ktm, paymentProof] = await Promise.all([
+    downloadImage(applicant.pasFotoDriveId, "pas foto"),
+    downloadImage(applicant.fotoKtmDriveId, "KTM"),
+    downloadImage(applicant.paymentProofDriveId, "bukti pembayaran"),
+  ]);
 
   const pdf = await renderApplicantPdf(applicant, { pasFoto, ktm, paymentProof });
 
