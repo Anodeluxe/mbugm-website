@@ -1,11 +1,11 @@
 .page {
-  --red: #ad2829;
-  --red-dark: #8f1f20;
-  --ivory: #f5f4e3;
-  --paper: #fbfaf4;
-  --ink: #221e1b;
-  --muted: #6b6459;
-  --parchment: #e8e6bf;
+  --red: var(--color-crimson);
+  --red-dark: var(--color-crimson-press);
+  --ivory: var(--color-ivory);
+  --paper: var(--color-paper);
+  --ink: var(--color-ink);
+  --muted: var(--color-warm-gray);
+  --parchment: var(--color-parchment);
   background: var(--paper);
   color: var(--ink);
   overflow-x: clip;

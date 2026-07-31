@@ -33,12 +33,12 @@ export default async function LoginPage({
       <div
         aria-hidden="true"
         className="absolute inset-x-0 top-0 h-2 max-[720px]:hidden"
-        style={{ background: "repeating-linear-gradient(90deg,#AD2829 0 22px,#E8E6BF 22px 44px)" }}
+        style={{ background: "repeating-linear-gradient(90deg,var(--color-crimson) 0 22px,var(--color-parchment) 22px 44px)" }}
       />
       <div
         aria-hidden="true"
         className="absolute inset-x-0 top-0 h-[7px] min-[721px]:hidden"
-        style={{ background: "repeating-linear-gradient(90deg,#AD2829 0 18px,#E8E6BF 18px 36px)" }}
+        style={{ background: "repeating-linear-gradient(90deg,var(--color-crimson) 0 18px,var(--color-parchment) 18px 36px)" }}
       />
 
       <div className="relative w-[420px] max-w-full rounded-xl border border-border bg-paper px-10 py-11 text-center shadow-[0_12px_40px_rgba(34,30,27,.12)] max-[720px]:w-full max-[720px]:px-[26px] max-[720px]:py-9">

@@ -1070,8 +1070,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                                 onClick={() => update("sessionId", String(session.id))}
                                 className={`min-h-24 rounded-lg px-4 py-3.5 text-left font-body transition-[background-color,box-shadow,transform] duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100 ${
                                   selected
-                                    ? "bg-crimson/5 shadow-[0_0_0_2px_#AD2829]"
-                                    : "bg-paper shadow-[0_0_0_1px_rgba(34,30,27,0.14)] hover:bg-parchment/25 hover:shadow-[0_0_0_1px_rgba(173,40,41,0.5)] active:scale-[0.96]"
+                                    ? "bg-crimson/5 ring-2 ring-crimson"
+                                    : "bg-paper ring-1 ring-ink/15 hover:bg-parchment/25 hover:ring-crimson/50 active:scale-[0.96]"
                                 }`}
                               >
                                 <span className="flex items-start justify-between gap-4">
@@ -1086,8 +1086,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                                   <span
                                     className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full transition-[background-color,box-shadow] duration-200 ${
                                       selected
-                                        ? "bg-crimson text-paper shadow-[0_0_0_1px_#AD2829]"
-                                        : "bg-paper text-transparent shadow-[0_0_0_1px_rgba(34,30,27,0.28)]"
+                                        ? "bg-crimson text-paper ring-1 ring-crimson"
+                                        : "bg-paper text-transparent ring-1 ring-ink/30"
                                     }`}
                                     aria-hidden="true"
                                   >

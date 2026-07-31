@@ -142,7 +142,7 @@ export default async function AdminHome({
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-end gap-3 max-[720px]:hidden">
+        <div className="ml-auto grid grid-cols-[auto_auto] items-start justify-end gap-x-3 gap-y-1 max-[720px]:hidden">
           {pdfBatches.length > 0 && (
             <form action="/api/applicants/batch-pdf" method="get" className="flex gap-2">
               {q && <input type="hidden" name="q" value={q.trim()} />}
@@ -180,9 +180,9 @@ export default async function AdminHome({
           <ResyncAllButton
             unsyncedCount={unsyncedCount}
             idleLabel={`Resync ${unsyncedCount} belum tersinkron`}
-            className="inline-flex h-[42px] items-center gap-2 rounded-[4px] bg-crimson px-5 text-[13px] font-bold text-paper transition-colors duration-150 hover:bg-crimson-press disabled:opacity-45"
-            doneClassName="inline-flex h-[42px] items-center rounded-[4px] bg-parchment px-5 text-[13px] font-bold text-badge-ok"
-            statusClassName="basis-full text-right text-[11.5px] text-warm-gray empty:hidden"
+            className="col-start-2 inline-flex h-[42px] items-center gap-2 rounded-[4px] bg-crimson px-5 text-[13px] font-bold text-paper transition-colors duration-150 hover:bg-crimson-press disabled:opacity-45"
+            doneClassName="col-start-2 inline-flex h-[42px] items-center rounded-[4px] bg-parchment px-5 text-[13px] font-bold text-badge-ok"
+            statusClassName="col-span-2 row-start-2 max-w-[400px] justify-self-end text-right text-[11.5px] leading-relaxed text-warm-gray empty:hidden"
           />
         </div>
       </div>
@@ -226,7 +226,7 @@ export default async function AdminHome({
 
         <button
           type="submit"
-          className="h-[42px] rounded-lg bg-ink px-5 text-[13px] font-bold text-paper transition-colors duration-150 hover:bg-[#3a3531] max-[720px]:hidden"
+          className="h-[42px] rounded-lg bg-ink px-5 text-[13px] font-bold text-paper transition-colors duration-150 hover:bg-crimson max-[720px]:hidden"
         >
           Cari
         </button>
@@ -359,7 +359,7 @@ export default async function AdminHome({
               </div>
               <p className="mt-1.5 mb-0.5 text-[15px] font-bold">{a.namaLengkap}</p>
               <p className="text-xs text-warm-gray">{a.nim}</p>
-              <div className="mt-2 border-t border-[#F0EDE0] pt-2">
+              <div className="mt-2 border-t border-border/60 pt-2">
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-warm-gray">
                   Penempatan
                 </p>
@@ -380,7 +380,7 @@ export default async function AdminHome({
                   <p className="mt-1 text-xs text-warm-gray">Belum dipilih</p>
                 )}
               </div>
-              <div className="mt-3 flex gap-2 border-t border-[#F0EDE0] pt-2.5">
+              <div className="mt-3 flex gap-2 border-t border-border/60 pt-2.5">
                 <Link
                   href={`/api/applicants/${a.id}/pdf`}
                   target="_blank"
@@ -404,7 +404,7 @@ export default async function AdminHome({
       </div>
 
       {/* Bulk actions follow you down the list on mobile */}
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap gap-2.5 border-t border-border bg-[rgba(251,250,244,.94)] px-4 py-3 backdrop-blur-[6px] min-[721px]:hidden">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap gap-2.5 border-t border-border bg-paper/95 px-4 py-3 backdrop-blur-[6px] min-[721px]:hidden">
         {pdfBatches.length > 0 && (
           <form action="/api/applicants/batch-pdf" method="get" className="flex flex-1 gap-2">
             {q && <input type="hidden" name="q" value={q.trim()} />}
