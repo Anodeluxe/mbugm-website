@@ -637,6 +637,95 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
   const progressPercent = ((currentStep + 1) / TOTAL_STEPS) * 100;
   const isLastStep = currentStep === TOTAL_STEPS - 1;
+  const summarySections = [
+    {
+      title: "Data Diri",
+      rows: [
+        { label: "NIM", value: values.nim },
+        { label: "Nama Lengkap", value: values.namaLengkap },
+        { label: "Nama Panggilan", value: values.namaPanggilan },
+        { label: "Tempat Lahir", value: values.tempatLahir },
+        { label: "Tanggal Lahir", value: values.tanggalLahir },
+        { label: "Jenis Kelamin", value: values.jenisKelamin },
+        { label: "Agama", value: values.agama },
+        { label: "Golongan Darah", value: values.golonganDarah },
+        { label: "Tinggi Badan", value: values.tinggiBadanCm && `${values.tinggiBadanCm} cm` },
+        { label: "Berat Badan", value: values.beratBadanKg && `${values.beratBadanKg} kg` },
+      ],
+    },
+    {
+      title: "Kesehatan dan Hobi",
+      rows: [
+        { label: "Riwayat Penyakit", value: values.riwayatPenyakit },
+        { label: "Alergi", value: values.alergi },
+        { label: "Hobi", value: values.hobi },
+        { label: "3 Sifat", value: values.tigaKata },
+      ],
+    },
+    {
+      title: "Akademik",
+      rows: [
+        { label: "Jenjang Studi", value: values.jenjangStudi },
+        { label: "Fakultas", value: values.fakultas },
+        { label: "Program Studi", value: values.prodi },
+        { label: "Asal SMA", value: values.asalSma },
+      ],
+    },
+    {
+      title: "Kontak dan Alamat",
+      rows: [
+        { label: "Nomor Telepon", value: values.noTelp },
+        { label: "Email", value: values.email },
+        { label: "Alamat Asal", value: values.alamatAsal },
+        { label: "Tempat Tinggal di Jogja", value: values.jenisTempat },
+        { label: "Alamat di Yogyakarta", value: values.alamatJogja },
+      ],
+    },
+    {
+      title: "Orang Tua atau Wali",
+      rows: [
+        { label: "Nama", value: values.namaOrtu },
+        { label: "Nomor Telepon", value: values.noOrtu },
+        { label: "Alamat", value: values.alamatOrtu },
+      ],
+    },
+    {
+      title: "Media Sosial",
+      rows: [
+        { label: "ID Line", value: values.idLine },
+        { label: "Instagram", value: values.idInstagram },
+        { label: "Facebook", value: values.idFacebook },
+        { label: "X (Twitter)", value: values.idTwitter },
+      ],
+    },
+    {
+      title: "Pengalaman dan Minat",
+      rows: [
+        { label: "Pernah Ikut Marching Band", value: values.pernahMb === "true" ? "Ya" : "Tidak" },
+        { label: "Unit Sebelumnya", value: values.unitSebelumnya },
+        { label: "Section", value: values.section },
+        { label: "Kemampuan Alat", value: values.kemampuanAlat },
+        { label: "Bidang Tari", value: values.bidangTari },
+        { label: "Bidang Musik", value: values.bidangMusik },
+        { label: "Organisasi Lain", value: values.organisasi },
+      ],
+    },
+    {
+      title: "Berkas dan Penempatan",
+      rows: [
+        { label: "Pas Foto", value: pasFoto?.name ?? "Belum diunggah" },
+        { label: "KTM", value: ktm?.name ?? "Belum diunggah" },
+        { label: "Biaya", value: REGISTRATION_FEE_LABEL },
+        { label: "Bukti Bayar", value: paymentProof?.name ?? "Belum diunggah" },
+        {
+          label: "Sesi",
+          value: selectedSession
+            ? `${selectedSession.dayLabel}, Sesi ${selectedSession.sessionNo}, ${getPlacementSessionTime(selectedSession.dayLabel, selectedSession.sessionNo)}`
+            : "Belum dipilih",
+        },
+      ],
+    },
+  ];
 
   return (
     <div ref={formTopRef}>
@@ -1189,31 +1278,37 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               </div>
 
               {/* Summary review */}
-              <div className="rounded-xl border border-border bg-parchment/30 p-5 space-y-2">
-                <p className="font-body text-xs font-bold tracking-[0.12em] text-warm-gray uppercase mb-3">
+              <div className="rounded-xl border border-border bg-parchment/30 p-5 sm:p-6">
+                <p className="font-body text-xs font-bold tracking-[0.12em] text-warm-gray uppercase">
                   Ringkasan Data
                 </p>
-                {[
-                  { label: "Nama", value: values.namaLengkap },
-                  { label: "NIM", value: values.nim },
-                  { label: "Prodi", value: [values.jenjangStudi, values.prodi, values.fakultas].filter(Boolean).join(", ") },
-                  { label: "Email", value: values.email },
-                  {
-                    label: "Sesi",
-                    value: selectedSession
-                      ? `${selectedSession.dayLabel}, Sesi ${selectedSession.sessionNo}, ${getPlacementSessionTime(selectedSession.dayLabel, selectedSession.sessionNo)}`
-                      : "Belum dipilih",
-                  },
-                  { label: "Pas Foto", value: pasFoto?.name ?? "Belum diunggah" },
-                  { label: "KTM", value: ktm?.name ?? "Belum diunggah" },
-                  { label: "Biaya", value: REGISTRATION_FEE_LABEL },
-                  { label: "Bukti Bayar", value: paymentProof?.name ?? "Belum diunggah" },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex gap-3 text-sm font-body">
-                    <span className="text-warm-gray w-24 shrink-0">{label}</span>
-                    <span className="min-w-0 text-ink font-medium break-words">{value || "Belum diisi"}</span>
-                  </div>
-                ))}
+                <div className="mt-4 divide-y divide-border/80">
+                  {summarySections.map(({ title, rows }) => {
+                    const visibleRows = rows.filter(({ value }) => value.trim());
+                    if (visibleRows.length === 0) return null;
+
+                    return (
+                      <section key={title} className="py-4 first:pt-0 last:pb-0">
+                        <h3 className="font-body text-xs font-bold text-ink">
+                          {title}
+                        </h3>
+                        <dl className="mt-2.5 space-y-2">
+                          {visibleRows.map(({ label, value }) => (
+                            <div
+                              key={label}
+                              className="grid gap-0.5 font-body text-sm sm:grid-cols-[10.5rem_minmax(0,1fr)] sm:gap-4"
+                            >
+                              <dt className="text-warm-gray">{label}</dt>
+                              <dd className="min-w-0 whitespace-pre-wrap break-words font-medium text-ink">
+                                {value}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </section>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Turnstile CAPTCHA ─ only mounts on last step */}
