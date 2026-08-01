@@ -16,13 +16,10 @@ export const config = {
   shortName: "PAB 2026",
   registrationFee: 10_000,
 
-  // Brand accent color (the design pass will use this more widely).
-  accentColor: "#0f2e1f",
-
   // Registration window, in Jogja time (WIB, +07:00). Outside this window the
   // form is closed automatically. To open/close manually, just move the dates.
-  opensAt: "2025-07-01T00:00:00+07:00",
-  closesAt: "2026-07-31T23:59:59+07:00",
+  opensAt: "2026-08-03T00:00:00+07:00",
+  closesAt: "2026-08-31T23:59:59+07:00",
 } as const;
 
 export function formatRupiah(value: number): string {
