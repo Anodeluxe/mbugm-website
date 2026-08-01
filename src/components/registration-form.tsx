@@ -146,6 +146,7 @@ type DraftPayload = {
   submissionToken?: string;
   values: FormValues;
   currentStep: number;
+  furthestStep?: number;
   pasFoto: File | null;
   ktm: File | null;
   paymentProof: File | null;
@@ -243,6 +244,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const formTopRef = useRef<HTMLDivElement | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
+  const [furthestStep, setFurthestStep] = useState(0);
   const [values, setValues] = useState<FormValues>(INITIAL);
   const [pasFoto, setPasFoto] = useState<File | null>(null);
   const [ktm, setKtm] = useState<File | null>(null);
@@ -324,7 +326,14 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         if (draft) {
           if (draft.submissionToken) setSubmissionToken(draft.submissionToken);
           setValues(draft.values);
-          setCurrentStep(Math.max(0, Math.min(draft.currentStep, TOTAL_STEPS - 1)));
+          const restoredStep = Math.max(0, Math.min(draft.currentStep, TOTAL_STEPS - 1));
+          setCurrentStep(restoredStep);
+          setFurthestStep(
+            Math.max(
+              restoredStep,
+              Math.min(draft.furthestStep ?? restoredStep, TOTAL_STEPS - 1),
+            ),
+          );
           setPasFoto(draft.pasFoto);
           setKtm(draft.ktm);
           setPaymentProof(draft.paymentProof ?? null);
@@ -351,6 +360,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         submissionToken,
         values,
         currentStep,
+        furthestStep,
         pasFoto,
         ktm,
         paymentProof,
@@ -365,6 +375,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     submissionToken,
     values,
     currentStep,
+    furthestStep,
     pasFoto,
     ktm,
     paymentProof,
@@ -465,14 +476,21 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       return;
     }
     setStepError(null);
-    setCurrentStep((s) => s + 1);
+    const nextStep = currentStep + 1;
+    setCurrentStep(nextStep);
+    setFurthestStep((step) => Math.max(step, nextStep));
+    scrollToTop();
+  }
+
+  function goToStep(step: number) {
+    if (step < 0 || step > furthestStep || step >= TOTAL_STEPS) return;
+    setStepError(null);
+    setCurrentStep(step);
     scrollToTop();
   }
 
   function handleBack() {
-    setStepError(null);
-    setCurrentStep((s) => s - 1);
-    scrollToTop();
+    goToStep(currentStep - 1);
   }
 
   async function handleClearDraft() {
@@ -487,6 +505,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       setSubmissionToken(crypto.randomUUID());
       setValues(INITIAL);
       setCurrentStep(0);
+      setFurthestStep(0);
       setPasFoto(null);
       setKtm(null);
       setPaymentProof(null);
@@ -638,8 +657,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        {/* Step dots */}
-        <div className="flex gap-1 mt-3 justify-center" aria-hidden="true">
+        {/* Mobile step dots */}
+        <div className="flex gap-1 mt-3 justify-center sm:hidden" aria-hidden="true">
           {STEPS.map((_, i) => (
             <div
               key={i}
@@ -653,6 +672,58 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             />
           ))}
         </div>
+        <nav
+          className="mt-4 hidden items-center justify-center gap-1 sm:flex"
+          aria-label="Navigasi langkah formulir"
+        >
+          <button
+            type="button"
+            onClick={() => goToStep(currentStep - 1)}
+            disabled={currentStep === 0}
+            className="flex size-9 items-center justify-center rounded-md border border-border bg-paper text-ink transition-colors hover:border-ink/40 hover:bg-parchment/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson disabled:cursor-not-allowed disabled:opacity-35"
+            aria-label="Langkah sebelumnya"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          {STEPS.map((step, index) => {
+            const isCurrent = index === currentStep;
+            const isUnlocked = index <= furthestStep;
+
+            return (
+              <button
+                key={step.label}
+                type="button"
+                onClick={() => goToStep(index)}
+                disabled={!isUnlocked}
+                aria-current={isCurrent ? "step" : undefined}
+                aria-label={`Langkah ${index + 1}: ${step.label}`}
+                title={step.label}
+                className={`size-9 rounded-md border font-body text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson ${
+                  isCurrent
+                    ? "border-crimson bg-crimson text-paper"
+                    : isUnlocked
+                      ? "border-border bg-paper text-ink hover:border-ink/40 hover:bg-parchment/40"
+                      : "cursor-not-allowed border-border/70 bg-border/20 text-warm-gray/55"
+                }`}
+              >
+                {index + 1}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => goToStep(currentStep + 1)}
+            disabled={currentStep >= furthestStep}
+            className="flex size-9 items-center justify-center rounded-md border border-border bg-paper text-ink transition-colors hover:border-ink/40 hover:bg-parchment/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson disabled:cursor-not-allowed disabled:opacity-35"
+            aria-label="Langkah berikutnya yang sudah dibuka"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        </nav>
         <div
           className="mt-3 flex min-h-5 items-center justify-center gap-3 text-center font-body text-xs text-warm-gray"
           aria-live="polite"
