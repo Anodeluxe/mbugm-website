@@ -19,7 +19,7 @@
 
 | Token | Hex | Peran |
 |---|---|---|
-| `crimson` | `#AD2829` | Warna utama/brand — CTA, hero, heading penting, focus ring. **Satu-satunya nilai yang berubah per tahun** (`accentColor` di `lib/config.ts`) |
+| `crimson` | `#AD2829` | Warna utama/brand — CTA, hero, heading penting, focus ring |
 | `crimson-press` | `#8F1F20` | Hover/active state dari crimson |
 | `parchment` | `#E8E6BF` | Surface heritage — background hero/section, badge, mat foto. **Bukan** untuk teks atau background form |
 | `paper` | `#FBFAF4` | Background area form & dashboard — tenang, kontras tinggi untuk input data |
@@ -150,8 +150,8 @@ Kata kunci pencarian, dikelompokkan per kebutuhan:
 
 ## 9. Catatan untuk Handoff (Penerus Non-Teknis)
 
-- Semua nilai yang berubah tiap tahun (warna accent, tahun, hero image, tanggal buka/tutup pendaftaran) **harus** ada di satu file: `lib/config.ts`. Jangan hardcode di komponen.
-- Jika ingin mengganti warna brand tahun depan, cukup ubah token `accentColor` — bukan menyentuh kode komponen.
+- Nilai operasional yang berubah tiap tahun (tahun serta tanggal buka/tutup pendaftaran) **harus** ada di satu file: `lib/config.ts`. Jangan hardcode di komponen.
+- Warna brand bersumber dari token global di `src/app/globals.css`. Jangan menyalin nilai hex ke komponen.
 - Dokumen ini sebaiknya disertakan dalam runbook handoff sebagai rujukan "kenapa warna ini dipilih" agar keputusan desain tidak hilang antar generasi pengurus.
 
 ---
@@ -173,4 +173,4 @@ Sudah terbangun:
 - **Halaman `/daftar`** (`src/app/daftar/page.tsx`) — server component, query sesi, guard window pendaftaran (closed-state designed).
 
 Catatan tindak lanjut:
-- `config.accentColor` (`lib/config.ts`) saat ini `#0f2e1f` tapi token `--color-crimson` di `globals.css` di-hardcode `#AD2829`. Untuk handoff sesuai §9 (ganti warna tahunan via satu file), idealnya token crimson di-drive dari `accentColor`. Belum diwire — visualnya tetap crimson seperti rancangan.
+- Palet brand bersumber dari token `--color-*` di `globals.css`; CSS Modules dan komponen harus merujuk token tersebut.

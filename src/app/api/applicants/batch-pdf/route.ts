@@ -5,13 +5,20 @@
 // Admin only.
 
 import { NextResponse } from "next/server";
-import { and, or, ilike, eq, desc } from "drizzle-orm";
+import { and, or, ilike, desc } from "drizzle-orm";
 import { auth } from "@/auth";
+import {
+  PDF_BATCH_SIZE,
+  getPdfBatchRange,
+  parsePdfBatchPage,
+  streamPdf,
+} from "@/lib/pdf-batch";
 import { db } from "@/server/db";
 import { applicants } from "@/server/db/schema";
 import { renderApplicantPdf } from "@/server/pdf/render";
 import { downloadFile } from "@/server/google/drive";
 import { mergePdfs } from "@/server/pdf/merge";
+import { applicantNeedsGoogleSync } from "@/server/google/sync";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // give the merge room (Vercel free-tier ceiling)
@@ -43,6 +50,10 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim();
   const filter = searchParams.get("filter");
+  const page = parsePdfBatchPage(searchParams.get("page"));
+  if (page === null) {
+    return new NextResponse("Halaman batch PDF tidak valid.", { status: 400 });
+  }
 
   const conditions = [];
   if (q) {
@@ -57,18 +68,18 @@ export async function GET(req: Request) {
     );
   }
   if (filter === "unsynced") {
-    conditions.push(
-      or(eq(applicants.driveSynced, false), eq(applicants.sheetSynced, false)),
-    );
+    conditions.push(applicantNeedsGoogleSync());
   }
   const where = conditions.length ? and(...conditions) : undefined;
 
+  // ponytail: offset pages keep exports stateless; use snapshot IDs if live inserts ever cause overlap.
   const rows = await db
     .select()
     .from(applicants)
     .where(where)
-    .orderBy(desc(applicants.createdAt))
-    .limit(1000);
+    .orderBy(desc(applicants.createdAt), desc(applicants.id))
+    .limit(PDF_BATCH_SIZE)
+    .offset((page - 1) * PDF_BATCH_SIZE);
 
   if (rows.length === 0) {
     return new NextResponse("Tidak ada pendaftar untuk diunduh.", { status: 404 });
@@ -87,11 +98,13 @@ export async function GET(req: Request) {
   });
 
   const merged = await mergePdfs(pdfs);
+  const { start, end } = getPdfBatchRange(page, (page - 1) * PDF_BATCH_SIZE + rows.length);
 
-  return new NextResponse(Buffer.from(merged), {
+  return new Response(streamPdf(merged), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="pendaftar-mbugm.pdf"`,
+      "Content-Disposition": `attachment; filename="pendaftar-mbugm-${start}-${end}.pdf"`,
+      "Cache-Control": "private, no-store",
     },
   });
 }

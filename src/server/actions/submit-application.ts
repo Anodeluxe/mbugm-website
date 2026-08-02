@@ -2,18 +2,21 @@
 
 "use server";
 
-import { count, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { db } from "@/server/db";
-import { applicants, sessions } from "@/server/db/schema";
+import { applicants, sessions, type Applicant } from "@/server/db/schema";
 import { applicantSchema } from "@/server/validation/applicant";
 import { verifyTurnstileToken } from "@/server/turnstile";
 import { syncApplicantToGoogle } from "@/server/google/sync";
 import { processImage } from "@/server/images";
 import { config, isRegistrationOpen } from "@/lib/config";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  MAX_UPLOAD_BYTES,
+} from "@/lib/applicant-rules";
 
 const MIN_FILL_SECONDS = 3;
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB ceiling (client compresses to ~1MB)
 
 type SubmitResult =
   | { ok: true; referenceNumber: string; duplicate?: boolean }
@@ -26,6 +29,36 @@ function generateReferenceNumber(): string {
 
 function isUploadedFile(v: FormDataEntryValue | null): v is File {
   return typeof v === "object" && v !== null && "arrayBuffer" in v && (v as File).size > 0;
+}
+
+async function processUploadedImage(file: File, label: string) {
+  try {
+    return await processImage(Buffer.from(await file.arrayBuffer()));
+  } catch {
+    throw new Error(`${label} tidak dapat dibaca. Pilih file JPG atau PNG lain.`);
+  }
+}
+
+async function finishGoogleSync(
+  applicant: Applicant,
+  images: { pasFoto: Buffer; ktm: Buffer; paymentProof: Buffer },
+  duplicate = false,
+): Promise<SubmitResult> {
+  try {
+    await syncApplicantToGoogle(applicant, images);
+    return {
+      ok: true,
+      referenceNumber: applicant.referenceNumber,
+      ...(duplicate ? { duplicate: true } : {}),
+    };
+  } catch (error) {
+    console.error("Google sync failed for", applicant.referenceNumber, error);
+    return {
+      ok: false,
+      error:
+        "Data utama sudah tersimpan, tetapi sinkronisasi belum selesai. Jangan tutup halaman. Selesaikan verifikasi CAPTCHA lalu kirim lagi.",
+    };
+  }
 }
 
 export async function submitApplication(formData: FormData): Promise<SubmitResult> {
@@ -45,7 +78,12 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
   // 1. VALIDATE the text fields on the server.
   const parsed = applicantSchema.safeParse(raw);
   if (!parsed.success) {
-    return { ok: false, error: "Data tidak valid. Periksa kembali isian Anda." };
+    return {
+      ok: false,
+      error:
+        parsed.error.issues[0]?.message ??
+        "Data tidak valid. Periksa kembali isian Anda.",
+    };
   }
   const data = parsed.data;
 
@@ -67,27 +105,48 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
   }
 
   // 4. FILES: required, must be images, must be within the size ceiling.
-  const pasFotoFile = formData.get("pasFoto");
-  const ktmFile = formData.get("ktm");
-  const paymentProofFile = formData.get("paymentProof");
-  if (!isUploadedFile(pasFotoFile)) return { ok: false, error: "Pas foto wajib diunggah." };
-  if (!isUploadedFile(ktmFile)) return { ok: false, error: "Foto KTM wajib diunggah." };
-  if (!isUploadedFile(paymentProofFile)) return { ok: false, error: "Bukti pembayaran wajib diunggah." };
-  for (const f of [pasFotoFile, ktmFile, paymentProofFile]) {
-    if (f.size > MAX_IMAGE_BYTES) return { ok: false, error: "Ukuran gambar terlalu besar." };
-    if (!f.type.startsWith("image/")) return { ok: false, error: "File harus berupa gambar." };
+  const uploads = [
+    { file: formData.get("pasFoto"), label: "Pas foto" },
+    { file: formData.get("ktm"), label: "Foto KTM" },
+    { file: formData.get("paymentProof"), label: "Bukti pembayaran" },
+  ];
+
+  for (const upload of uploads) {
+    if (!isUploadedFile(upload.file)) {
+      return { ok: false, error: `${upload.label} wajib diunggah.` };
+    }
+    if (upload.file.size > MAX_UPLOAD_BYTES) {
+      return { ok: false, error: `${upload.label} maksimal 7 MB.` };
+    }
+    if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(upload.file.type)) {
+      return {
+        ok: false,
+        error: `${upload.label} harus menggunakan format JPG atau PNG.`,
+      };
+    }
   }
 
   // Re-encode/sanitize. If a "file" isn't a real image, sharp throws here.
-  let pasFotoBuf: Buffer;
-  let ktmBuf: Buffer;
-  let paymentProofBuf: Buffer;
+  let imageBuffers: {
+    pasFoto: Buffer;
+    ktm: Buffer;
+    paymentProof: Buffer;
+  };
   try {
-    pasFotoBuf = await processImage(Buffer.from(await pasFotoFile.arrayBuffer()));
-    ktmBuf = await processImage(Buffer.from(await ktmFile.arrayBuffer()));
-    paymentProofBuf = await processImage(Buffer.from(await paymentProofFile.arrayBuffer()));
-  } catch {
-    return { ok: false, error: "Gambar tidak dapat diproses. Pastikan file berupa foto." };
+    const [pasFoto, ktm, paymentProof] = await Promise.all([
+      processUploadedImage(uploads[0].file as File, uploads[0].label),
+      processUploadedImage(uploads[1].file as File, uploads[1].label),
+      processUploadedImage(uploads[2].file as File, uploads[2].label),
+    ]);
+    imageBuffers = { pasFoto, ktm, paymentProof };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Gambar tidak dapat diproses. Pilih file lain.",
+    };
   }
 
   // 5. IDEMPOTENCY.
@@ -95,7 +154,7 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
     where: eq(applicants.submissionToken, data.submissionToken),
   });
   if (existingByToken) {
-    return { ok: true, referenceNumber: existingByToken.referenceNumber, duplicate: true };
+    return finishGoogleSync(existingByToken, imageBuffers, true);
   }
 
   // 6. FRIENDLY DUPLICATE CHECK on NIM.
@@ -111,16 +170,6 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
   });
   if (!selectedSession) {
     return { ok: false, error: "Sesi penempatan tidak ditemukan. Silakan pilih sesi lain." };
-  }
-
-  // ponytail: count-then-insert can race on the final slot; use an atomic
-  // reservation or row lock if simultaneous high-volume submits become likely.
-  const [{ value: bookedCount }] = await db
-    .select({ value: count() })
-    .from(applicants)
-    .where(eq(applicants.sessionId, data.sessionId));
-  if (bookedCount >= selectedSession.quota) {
-    return { ok: false, error: "Sesi penempatan sudah penuh. Silakan pilih sesi lain." };
   }
 
   // 7. INSERT (full row returned for the sync).
@@ -174,7 +223,16 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
       .returning();
     inserted = row;
   } catch (err) {
-    const e = err as { code?: string; detail?: string };
+    const wrapped = err as {
+      code?: string;
+      detail?: string;
+      constraint?: string;
+      cause?: { code?: string; detail?: string; constraint?: string };
+    };
+    const e = wrapped.cause ?? wrapped;
+    if (e.code === "23514" && e.constraint === "session_quota_not_exceeded") {
+      return { ok: false, error: "Sesi penempatan sudah penuh. Silakan pilih sesi lain." };
+    }
     if (e.code === "23505") {
       const detail = e.detail ?? "";
       if (detail.includes("nim")) return { ok: false, error: "NIM ini sudah terdaftar." };
@@ -182,7 +240,7 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
         const saved = await db.query.applicants.findFirst({
           where: eq(applicants.submissionToken, data.submissionToken),
         });
-        if (saved) return { ok: true, referenceNumber: saved.referenceNumber, duplicate: true };
+        if (saved) return finishGoogleSync(saved, imageBuffers, true);
       }
       return { ok: false, error: "Terjadi kesalahan, silakan coba lagi." };
     }
@@ -190,18 +248,7 @@ export async function submitApplication(formData: FormData): Promise<SubmitResul
     return { ok: false, error: "Terjadi kesalahan di server. Silakan coba lagi." };
   }
 
-  // 8. SIDE EFFECTS (best-effort). Pass the processed photo buffers so they
-  //    upload to Drive and embed into the PDF. A failure here doesn't fail the
-  //    registration — the resync button mops it up.
-  try {
-    await syncApplicantToGoogle(inserted, {
-      pasFoto: pasFotoBuf,
-      ktm: ktmBuf,
-      paymentProof: paymentProofBuf,
-    });
-  } catch (e) {
-    console.error("Google sync failed (will need resync):", e);
-  }
-
-  return { ok: true, referenceNumber: inserted.referenceNumber };
+  // 8. Only report success after every required document is durable in Drive.
+  //    Retrying with the same submission token resumes any missing sync steps.
+  return finishGoogleSync(inserted, imageBuffers);
 }

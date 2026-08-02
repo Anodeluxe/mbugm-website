@@ -2,6 +2,7 @@
 
 import { getSheets } from "./client";
 import type { Applicant } from "@/server/db/schema";
+import { getPlacementSessionLabel } from "@/server/placement-session";
 
 // The tab name in your spreadsheet. Change this if your first tab isn't "Sheet1".
 const SHEET_TAB = "Sheet1";
@@ -30,10 +31,12 @@ export const SHEET_HEADERS = [
   "Unit Sebelumnya",
   "Section",
   "3 Kata",
+  "Sesi Penempatan",
 ];
 
 export async function appendApplicantRow(a: Applicant): Promise<void> {
   const sheets = getSheets();
+  const placementSession = await getPlacementSessionLabel(a.sessionId);
   const row = [
     a.createdAt ? a.createdAt.toISOString() : "",
     a.referenceNumber,
@@ -57,6 +60,7 @@ export async function appendApplicantRow(a: Applicant): Promise<void> {
     a.unitSebelumnya ?? "",
     a.section ?? "",
     a.tigaKata ?? "",
+    placementSession,
   ];
 
   await sheets.spreadsheets.values.append({

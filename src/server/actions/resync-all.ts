@@ -6,12 +6,15 @@
 
 "use server";
 
-import { or, eq, count } from "drizzle-orm";
+import { count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/server/db";
 import { applicants } from "@/server/db/schema";
-import { syncApplicantToGoogle } from "@/server/google/sync";
+import {
+  applicantNeedsGoogleSync,
+  syncApplicantToGoogle,
+} from "@/server/google/sync";
 
 const BATCH = 20;
 
@@ -24,10 +27,7 @@ export async function resyncUnsyncedBatch(): Promise<{
   const session = await auth();
   if (!session) return { attempted: 0, succeeded: 0, failed: 0, remaining: 0 };
 
-  const unsynced = or(
-    eq(applicants.driveSynced, false),
-    eq(applicants.sheetSynced, false),
-  );
+  const unsynced = applicantNeedsGoogleSync();
 
   const batch = await db
     .select()

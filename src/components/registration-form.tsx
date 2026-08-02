@@ -8,7 +8,16 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState, useCallback, useEffect } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import imageCompression from "browser-image-compression";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { submitApplication } from "@/server/actions/submit-application";
@@ -24,6 +33,21 @@ import {
   JENJANG_STUDI_OPTIONS,
   JENIS_TEMPAT_OPTIONS,
 } from "@/lib/constants";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  APPLICANT_TEXT_LIMITS,
+  HEIGHT_MAX_CM,
+  HEIGHT_MIN_CM,
+  MAX_UPLOAD_BYTES,
+  PHONE_MAX_DIGITS,
+  PHONE_MIN_DIGITS,
+  WEIGHT_MAX_KG,
+  WEIGHT_MIN_KG,
+  isValidBirthDate,
+  isValidNim,
+  isValidPhone,
+  isValidTraits,
+} from "@/lib/applicant-rules";
 
 type SessionOption = {
   id: number;
@@ -99,22 +123,51 @@ function todayInputValue() {
   return today.toISOString().slice(0, 10);
 }
 
-function isFutureDate(value: string) {
-  return Boolean(value) && value > todayInputValue();
-}
-
 function isValidEmail(value: string) {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
 }
 
+function isOptionalIntegerInRange(value: string, min: number, max: number) {
+  if (!value.trim()) return true;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= min && number <= max;
+}
+
+function validateImage(file: File | null, label: string) {
+  if (!file) return `${label} wajib diunggah.`;
+  if (file.size > MAX_UPLOAD_BYTES) return `${label} maksimal 7 MB.`;
+  if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
+    return `${label} harus menggunakan format JPG atau PNG.`;
+  }
+  return null;
+}
+
 type DraftPayload = {
+  submissionToken?: string;
   values: FormValues;
   currentStep: number;
+  furthestStep?: number;
   pasFoto: File | null;
   ktm: File | null;
   paymentProof: File | null;
-  savedAt: number;
 };
+
+function hasDraftContent(
+  values: FormValues,
+  currentStep: number,
+  pasFoto: File | null,
+  ktm: File | null,
+  paymentProof: File | null,
+) {
+  return (
+    currentStep > 0 ||
+    Boolean(pasFoto || ktm || paymentProof) ||
+    Object.entries(values).some(
+      ([name, value]) =>
+        name !== "pernahMb" && name !== "website" && value.trim() !== "",
+    )
+  );
+}
 
 function openDraftDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -184,27 +237,37 @@ async function clearDraft() {
 }
 
 export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
-  const [submissionToken] = useState(() => crypto.randomUUID());
+  const [submissionToken, setSubmissionToken] = useState(() => crypto.randomUUID());
   const [formLoadedAt] = useState(() => Date.now());
   const [turnstileToken, setTurnstileToken] = useState("");
   const turnstileRef = useRef<TurnstileInstance | null>(null);
   const formTopRef = useRef<HTMLDivElement | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
+  const [furthestStep, setFurthestStep] = useState(0);
   const [values, setValues] = useState<FormValues>(INITIAL);
   const [pasFoto, setPasFoto] = useState<File | null>(null);
   const [ktm, setKtm] = useState<File | null>(null);
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
-  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [draftStatus, setDraftStatus] = useState<
+    "idle" | "saving" | "saved" | "clearing" | "deleted" | "error"
+  >("idle");
   const sessionDays = groupPlacementSessions(sessions);
   const selectedSession = sessions.find((session) => String(session.id) === values.sessionId);
+  const hasDraft = hasDraftContent(
+    values,
+    currentStep,
+    pasFoto,
+    ktm,
+    paymentProof,
+  );
 
   const [status, setStatus] = useState<
     | { state: "idle" }
     | { state: "submitting" }
-    | { state: "success"; referenceNumber: string }
+    | { state: "success"; referenceNumber: string; draftCleared: boolean }
     | { state: "error"; message: string }
   >({ state: "idle" });
 
@@ -224,6 +287,31 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     };
   }
 
+  function textField(name: keyof typeof APPLICANT_TEXT_LIMITS) {
+    return {
+      ...field(name),
+      maxLength: APPLICANT_TEXT_LIMITS[name],
+    };
+  }
+
+  function handleImageChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+    label: string,
+    setFile: (file: File | null) => void,
+  ) {
+    const file = event.target.files?.[0] ?? null;
+    const error = validateImage(file, label);
+    if (error) {
+      event.target.value = "";
+      setFile(null);
+      setStepError(error);
+      return;
+    }
+
+    setStepError(null);
+    setFile(file);
+  }
+
   const scrollToTop = useCallback(() => {
     formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
@@ -236,8 +324,16 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         const draft = await readDraft();
         if (!active) return;
         if (draft) {
+          if (draft.submissionToken) setSubmissionToken(draft.submissionToken);
           setValues(draft.values);
-          setCurrentStep(Math.max(0, Math.min(draft.currentStep, TOTAL_STEPS - 1)));
+          const restoredStep = Math.max(0, Math.min(draft.currentStep, TOTAL_STEPS - 1));
+          setCurrentStep(restoredStep);
+          setFurthestStep(
+            Math.max(
+              restoredStep,
+              Math.min(draft.furthestStep ?? restoredStep, TOTAL_STEPS - 1),
+            ),
+          );
           setPasFoto(draft.pasFoto);
           setKtm(draft.ktm);
           setPaymentProof(draft.paymentProof ?? null);
@@ -256,24 +352,36 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   }, []);
 
   useEffect(() => {
-    if (!draftReady || status.state === "success") return;
+    if (!draftReady || !hasDraft || status.state === "success") return;
 
     const timeout = window.setTimeout(() => {
       setDraftStatus("saving");
       void writeDraft({
+        submissionToken,
         values,
         currentStep,
+        furthestStep,
         pasFoto,
         ktm,
         paymentProof,
-        savedAt: Date.now(),
       })
         .then(() => setDraftStatus("saved"))
         .catch(() => setDraftStatus("error"));
     }, SAVE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeout);
-  }, [draftReady, values, currentStep, pasFoto, ktm, paymentProof, status.state]);
+  }, [
+    draftReady,
+    submissionToken,
+    values,
+    currentStep,
+    furthestStep,
+    pasFoto,
+    ktm,
+    paymentProof,
+    hasDraft,
+    status.state,
+  ]);
 
   function validateStep(step: number): string | null {
     const missingField = REQUIRED_PER_STEP[step]?.find((key) => !values[key]?.trim());
@@ -282,14 +390,70 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     }
 
     const stepValidators: Partial<Record<number, () => string | null>> = {
-      0: () => (isFutureDate(values.tanggalLahir) ? "Tanggal lahir tidak boleh melebihi hari ini." : null),
-      3: () => (values.email.trim() && !isValidEmail(values.email) ? "Format email belum valid." : null),
-      7: () => {
-        if (!pasFoto) return 'Kolom "Pas Foto" wajib diisi.';
-        if (!ktm) return 'Kolom "Foto KTM" wajib diisi.';
+      0: () => {
+        if (!isValidNim(values.nim)) {
+          return "NIM harus terdiri dari 5-32 karakter dan hanya boleh memakai huruf, angka, spasi, garis miring, titik, atau tanda hubung.";
+        }
+        if (values.namaLengkap.trim().length < 2) {
+          return "Nama lengkap minimal 2 karakter.";
+        }
+        if (values.tempatLahir.trim().length < 2) {
+          return "Tempat lahir minimal 2 karakter.";
+        }
+        if (!isValidBirthDate(values.tanggalLahir)) {
+          return "Tanggal lahir harus berupa tanggal nyata antara 1 Januari 1900 dan hari ini.";
+        }
+        if (
+          !isOptionalIntegerInRange(
+            values.tinggiBadanCm,
+            HEIGHT_MIN_CM,
+            HEIGHT_MAX_CM,
+          )
+        ) {
+          return `Tinggi badan harus berupa bilangan bulat ${HEIGHT_MIN_CM}-${HEIGHT_MAX_CM} cm.`;
+        }
+        if (
+          !isOptionalIntegerInRange(
+            values.beratBadanKg,
+            WEIGHT_MIN_KG,
+            WEIGHT_MAX_KG,
+          )
+        ) {
+          return `Berat badan harus berupa bilangan bulat ${WEIGHT_MIN_KG}-${WEIGHT_MAX_KG} kg.`;
+        }
         return null;
       },
-      8: () => (!paymentProof ? 'Kolom "Bukti Pembayaran" wajib diisi.' : null),
+      1: () =>
+        isValidTraits(values.tigaKata)
+          ? null
+          : "Tuliskan tepat 3 sifat, pisahkan dengan koma, dan batasi setiap sifat maksimal 40 karakter.",
+      2: () => {
+        if (values.fakultas.trim().length < 2) {
+          return "Fakultas minimal 2 karakter.";
+        }
+        if (values.prodi.trim().length < 2) {
+          return "Program studi minimal 2 karakter.";
+        }
+        return null;
+      },
+      3: () => {
+        if (!isValidPhone(values.noTelp)) {
+          return `Nomor telepon harus mengandung ${PHONE_MIN_DIGITS}-${PHONE_MAX_DIGITS} digit.`;
+        }
+        if (!isValidEmail(values.email)) return "Format email belum valid.";
+        return null;
+      },
+      4: () =>
+        values.noOrtu.trim() && !isValidPhone(values.noOrtu)
+          ? `Nomor telepon orang tua harus mengandung ${PHONE_MIN_DIGITS}-${PHONE_MAX_DIGITS} digit.`
+          : null,
+      7: () => {
+        return (
+          validateImage(pasFoto, "Pas foto") ??
+          validateImage(ktm, "Foto KTM")
+        );
+      },
+      8: () => validateImage(paymentProof, "Bukti pembayaran"),
       9: () => {
         if (sessions.length === 0) {
           return "Sesi penempatan belum tersedia. Hubungi panitia — pendaftaran belum bisa dikirim.";
@@ -312,31 +476,79 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       return;
     }
     setStepError(null);
-    setCurrentStep((s) => s + 1);
+    const nextStep = currentStep + 1;
+    setCurrentStep(nextStep);
+    setFurthestStep((step) => Math.max(step, nextStep));
+    scrollToTop();
+  }
+
+  function goToStep(step: number) {
+    if (step < 0 || step > furthestStep || step >= TOTAL_STEPS) return;
+    setStepError(null);
+    setCurrentStep(step);
     scrollToTop();
   }
 
   function handleBack() {
-    setStepError(null);
-    setCurrentStep((s) => s - 1);
-    scrollToTop();
+    goToStep(currentStep - 1);
+  }
+
+  async function handleClearDraft() {
+    const confirmed = window.confirm(
+      "Hapus seluruh isian dan berkas draf dari perangkat ini?",
+    );
+    if (!confirmed) return;
+
+    setDraftStatus("clearing");
+    try {
+      await clearDraft();
+      setSubmissionToken(crypto.randomUUID());
+      setValues(INITIAL);
+      setCurrentStep(0);
+      setFurthestStep(0);
+      setPasFoto(null);
+      setKtm(null);
+      setPaymentProof(null);
+      setStepError(null);
+      setStatus({ state: "idle" });
+      setTurnstileToken("");
+      turnstileRef.current?.reset();
+      setDraftStatus("deleted");
+      scrollToTop();
+    } catch {
+      setDraftStatus("error");
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!pasFoto) return setStatus({ state: "error", message: "Mohon unggah pas foto." });
-    if (!ktm) return setStatus({ state: "error", message: "Mohon unggah foto KTM." });
-    if (!paymentProof) return setStatus({ state: "error", message: "Mohon unggah bukti pembayaran." });
+    const imageError =
+      validateImage(pasFoto, "Pas foto") ??
+      validateImage(ktm, "Foto KTM") ??
+      validateImage(paymentProof, "Bukti pembayaran");
+    if (imageError) {
+      return setStatus({ state: "error", message: imageError });
+    }
     if (!turnstileToken) return setStatus({ state: "error", message: "Mohon selesaikan verifikasi CAPTCHA." });
 
     setStatus({ state: "submitting" });
+    let compressedImages: File[];
     try {
-      const [pasFotoC, ktmC, paymentProofC] = await Promise.all([
-        imageCompression(pasFoto, COMPRESS_OPTS),
-        imageCompression(ktm, COMPRESS_OPTS),
-        imageCompression(paymentProof, COMPRESS_OPTS),
+      compressedImages = await Promise.all([
+        imageCompression(pasFoto as File, COMPRESS_OPTS),
+        imageCompression(ktm as File, COMPRESS_OPTS),
+        imageCompression(paymentProof as File, COMPRESS_OPTS),
       ]);
+    } catch {
+      setStatus({
+        state: "error",
+        message: "Gambar gagal dikompres. Pilih file JPG atau PNG lain.",
+      });
+      return;
+    }
 
+    try {
+      const [pasFotoC, ktmC, paymentProofC] = compressedImages;
       const fd = new FormData();
       for (const [k, v] of Object.entries(values)) fd.append(k, v);
       fd.append("submissionToken", submissionToken);
@@ -348,9 +560,23 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
       const result = await submitApplication(fd);
       if (result.ok) {
-        await clearDraft().catch(() => undefined);
-        setDraftStatus("idle");
-        setStatus({ state: "success", referenceNumber: result.referenceNumber });
+        let draftCleared = true;
+        try {
+          await clearDraft();
+        } catch {
+          draftCleared = false;
+        }
+
+        setValues(INITIAL);
+        setPasFoto(null);
+        setKtm(null);
+        setPaymentProof(null);
+        setDraftStatus(draftCleared ? "idle" : "error");
+        setStatus({
+          state: "success",
+          referenceNumber: result.referenceNumber,
+          draftCleared,
+        });
         scrollToTop();
       } else {
         setStatus({ state: "error", message: result.error });
@@ -358,7 +584,11 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
         setTurnstileToken("");
       }
     } catch {
-      setStatus({ state: "error", message: "Gagal memproses gambar. Silakan coba lagi." });
+      setStatus({
+        state: "error",
+        message:
+          "Koneksi ke server terputus. Isianmu masih tersimpan, silakan coba lagi.",
+      });
       turnstileRef.current?.reset();
       setTurnstileToken("");
     }
@@ -391,12 +621,111 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
           Pantau informasi lanjutan melalui email atau media sosial resmi{" "}
           <strong className="text-ink">@mbugm.official</strong>.
         </p>
+        {!status.draftCleared && (
+          <p
+            role="alert"
+            className="mt-5 rounded-lg border border-crimson/20 bg-crimson/5 px-4 py-3 font-body text-xs leading-relaxed text-crimson"
+          >
+            Pendaftaran tetap berhasil, tetapi draf di perangkat ini belum
+            terhapus. Hapus data situs melalui pengaturan browser jika perangkat
+            digunakan bersama.
+          </p>
+        )}
       </div>
     );
   }
 
   const progressPercent = ((currentStep + 1) / TOTAL_STEPS) * 100;
   const isLastStep = currentStep === TOTAL_STEPS - 1;
+  const summarySections = [
+    {
+      title: "Data Diri",
+      rows: [
+        { label: "NIM", value: values.nim },
+        { label: "Nama Lengkap", value: values.namaLengkap },
+        { label: "Nama Panggilan", value: values.namaPanggilan },
+        { label: "Tempat Lahir", value: values.tempatLahir },
+        { label: "Tanggal Lahir", value: values.tanggalLahir },
+        { label: "Jenis Kelamin", value: values.jenisKelamin },
+        { label: "Agama", value: values.agama },
+        { label: "Golongan Darah", value: values.golonganDarah },
+        { label: "Tinggi Badan", value: values.tinggiBadanCm && `${values.tinggiBadanCm} cm` },
+        { label: "Berat Badan", value: values.beratBadanKg && `${values.beratBadanKg} kg` },
+      ],
+    },
+    {
+      title: "Kesehatan dan Hobi",
+      rows: [
+        { label: "Riwayat Penyakit", value: values.riwayatPenyakit },
+        { label: "Alergi", value: values.alergi },
+        { label: "Hobi", value: values.hobi },
+        { label: "3 Sifat", value: values.tigaKata },
+      ],
+    },
+    {
+      title: "Akademik",
+      rows: [
+        { label: "Jenjang Studi", value: values.jenjangStudi },
+        { label: "Fakultas", value: values.fakultas },
+        { label: "Program Studi", value: values.prodi },
+        { label: "Asal SMA", value: values.asalSma },
+      ],
+    },
+    {
+      title: "Kontak dan Alamat",
+      rows: [
+        { label: "Nomor Telepon", value: values.noTelp },
+        { label: "Email", value: values.email },
+        { label: "Alamat Asal", value: values.alamatAsal },
+        { label: "Tempat Tinggal di Jogja", value: values.jenisTempat },
+        { label: "Alamat di Yogyakarta", value: values.alamatJogja },
+      ],
+    },
+    {
+      title: "Orang Tua atau Wali",
+      rows: [
+        { label: "Nama", value: values.namaOrtu },
+        { label: "Nomor Telepon", value: values.noOrtu },
+        { label: "Alamat", value: values.alamatOrtu },
+      ],
+    },
+    {
+      title: "Media Sosial",
+      rows: [
+        { label: "ID Line", value: values.idLine },
+        { label: "Instagram", value: values.idInstagram },
+        { label: "Facebook", value: values.idFacebook },
+        { label: "X (Twitter)", value: values.idTwitter },
+      ],
+    },
+    {
+      title: "Pengalaman dan Minat",
+      rows: [
+        { label: "Pernah Ikut Marching Band", value: values.pernahMb === "true" ? "Ya" : "Tidak" },
+        { label: "Unit Sebelumnya", value: values.unitSebelumnya },
+        { label: "Section", value: values.section },
+        { label: "Kemampuan Alat", value: values.kemampuanAlat },
+        { label: "Bidang Tari", value: values.bidangTari },
+        { label: "Bidang Musik", value: values.bidangMusik },
+        { label: "Organisasi Lain", value: values.organisasi },
+      ],
+    },
+    {
+      title: "Berkas dan Penempatan",
+      rows: [
+        { label: "Pas Foto", value: pasFoto?.name ?? "Belum diunggah" },
+        { label: "KTM", value: ktm?.name ?? "Belum diunggah" },
+        { label: "Biaya", value: REGISTRATION_FEE_LABEL },
+        { label: "Bukti Bayar", value: paymentProof?.name ?? "Belum diunggah" },
+        {
+          label: "Sesi",
+          value: selectedSession
+            ? `${selectedSession.dayLabel}, Sesi ${selectedSession.sessionNo}, ${getPlacementSessionTime(selectedSession.dayLabel, selectedSession.sessionNo)}`
+            : "Belum dipilih",
+        },
+      ],
+    },
+  ];
 
   return (
     <div ref={formTopRef}>
@@ -417,8 +746,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        {/* Step dots */}
-        <div className="flex gap-1 mt-3 justify-center" aria-hidden="true">
+        {/* Mobile step dots */}
+        <div className="flex gap-1 mt-3 justify-center sm:hidden" aria-hidden="true">
           {STEPS.map((_, i) => (
             <div
               key={i}
@@ -432,18 +761,89 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             />
           ))}
         </div>
-        <p className="mt-3 text-center font-body text-xs text-warm-gray min-h-4">
-          {draftStatus === "saving" && "Menyimpan draf"}
-          {draftStatus === "saved" && "Draf tersimpan di perangkat ini."}
-          {draftStatus === "error" && "Draf gagal disimpan."}
-          {draftStatus === "idle" && "\u00A0"}
-        </p>
+        <nav
+          className="mt-4 hidden items-center justify-center gap-1 sm:flex"
+          aria-label="Navigasi langkah formulir"
+        >
+          <button
+            type="button"
+            onClick={() => goToStep(currentStep - 1)}
+            disabled={currentStep === 0}
+            className="flex size-9 items-center justify-center rounded-md border border-border bg-paper text-ink transition-colors hover:border-ink/40 hover:bg-parchment/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson disabled:cursor-not-allowed disabled:opacity-35"
+            aria-label="Langkah sebelumnya"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          {STEPS.map((step, index) => {
+            const isCurrent = index === currentStep;
+            const isUnlocked = index <= furthestStep;
+
+            return (
+              <button
+                key={step.label}
+                type="button"
+                onClick={() => goToStep(index)}
+                disabled={!isUnlocked}
+                aria-current={isCurrent ? "step" : undefined}
+                aria-label={`Langkah ${index + 1}: ${step.label}`}
+                title={step.label}
+                className={`size-9 rounded-md border font-body text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson ${
+                  isCurrent
+                    ? "border-crimson bg-crimson text-paper"
+                    : isUnlocked
+                      ? "border-border bg-paper text-ink hover:border-ink/40 hover:bg-parchment/40"
+                      : "cursor-not-allowed border-border/70 bg-border/20 text-warm-gray/55"
+                }`}
+              >
+                {index + 1}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => goToStep(currentStep + 1)}
+            disabled={currentStep >= furthestStep}
+            className="flex size-9 items-center justify-center rounded-md border border-border bg-paper text-ink transition-colors hover:border-ink/40 hover:bg-parchment/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson disabled:cursor-not-allowed disabled:opacity-35"
+            aria-label="Langkah berikutnya yang sudah dibuka"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        </nav>
+        <div
+          className="mt-3 flex min-h-5 items-center justify-center gap-3 text-center font-body text-xs text-warm-gray"
+          aria-live="polite"
+        >
+          <span>
+            {draftStatus === "saving" && "Menyimpan draf"}
+            {draftStatus === "saved" && "Draf tersimpan di perangkat ini."}
+            {draftStatus === "clearing" && "Menghapus draf"}
+            {draftStatus === "deleted" && "Draf telah dihapus dari perangkat ini."}
+            {draftStatus === "error" && "Draf gagal diproses."}
+            {draftStatus === "idle" && "\u00A0"}
+          </span>
+          {hasDraft && draftStatus !== "deleted" && (
+            <button
+              type="button"
+              onClick={handleClearDraft}
+              disabled={
+                draftStatus === "clearing" || status.state === "submitting"
+              }
+              className="shrink-0 font-semibold text-crimson underline decoration-crimson/40 underline-offset-2 transition-colors hover:text-crimson-press disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Hapus draf
+            </button>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} noValidate>
         {/* Honeypot */}
         <input
-          type="text" name="website" {...field("website")}
+          type="text" name="website" {...textField("website")}
           tabIndex={-1} autoComplete="off" aria-hidden="true"
           style={{ position: "absolute", left: "-9999px", width: "1px", opacity: 0 }}
         />
@@ -454,20 +854,20 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             <legend>Data Diri</legend>
             <div className="space-y-4">
               <Field label="NIM" required>
-                <input {...field("nim")} placeholder="mis. 23/123456/PA/12345" autoComplete="off" />
+                <input {...textField("nim")} placeholder="mis. 23/123456/PA/12345" autoComplete="off" />
               </Field>
               <Field label="Nama Lengkap" required>
-                <input {...field("namaLengkap")} placeholder="Sesuai KTP atau KTM" autoComplete="name" />
+                <input {...textField("namaLengkap")} placeholder="Sesuai KTP atau KTM" autoComplete="name" />
               </Field>
               <Field label="Nama Panggilan">
-                <input {...field("namaPanggilan")} placeholder="mis. Budi" />
+                <input {...textField("namaPanggilan")} placeholder="mis. Budi" />
               </Field>
               <div className="grid sm:grid-cols-2 gap-4">
                 <Field label="Tempat Lahir" required>
-                  <input {...field("tempatLahir")} placeholder="mis. Yogyakarta" />
+                  <input {...textField("tempatLahir")} placeholder="mis. Yogyakarta" />
                 </Field>
                 <Field label="Tanggal Lahir" required>
-                  <input type="date" max={todayInputValue()} {...field("tanggalLahir")} />
+                  <input type="date" min="1900-01-01" max={todayInputValue()} {...field("tanggalLahir")} />
                 </Field>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -492,10 +892,10 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   </select>
                 </Field>
                 <Field label="Tinggi Badan (cm)">
-                  <input type="number" min="100" max="250" {...field("tinggiBadanCm")} placeholder="170" />
+                  <input type="number" min={HEIGHT_MIN_CM} max={HEIGHT_MAX_CM} step="1" {...field("tinggiBadanCm")} placeholder="170" />
                 </Field>
                 <Field label="Berat Badan (kg)">
-                  <input type="number" min="30" max="200" {...field("beratBadanKg")} placeholder="60" />
+                  <input type="number" min={WEIGHT_MIN_KG} max={WEIGHT_MAX_KG} step="1" {...field("beratBadanKg")} placeholder="60" />
                 </Field>
               </div>
             </div>
@@ -508,17 +908,17 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             <legend>Kesehatan dan Hobi</legend>
             <div className="space-y-4">
               <Field label="Riwayat Penyakit">
-                <textarea {...field("riwayatPenyakit")} placeholder="Tulis jika ada, atau kosongkan jika tidak ada" />
+                <textarea {...textField("riwayatPenyakit")} placeholder="Tulis jika ada, atau kosongkan jika tidak ada" />
               </Field>
               <Field label="Alergi">
-                <textarea {...field("alergi")} placeholder="mis. debu atau obat tertentu. Kosongkan jika tidak ada" />
+                <textarea {...textField("alergi")} placeholder="mis. debu atau obat tertentu. Kosongkan jika tidak ada" />
               </Field>
               <Field label="Hobi">
-                <input {...field("hobi")} placeholder="mis. membaca, bermain musik, olahraga" />
+                <input {...textField("hobi")} placeholder="mis. membaca, bermain musik, olahraga" />
               </Field>
               <Field label="Sebutkan 3 sifat yang menggambarkan dirimu" required>
                 <input
-                  {...field("tigaKata")}
+                  {...textField("tigaKata")}
                   placeholder="mis. tekun, ramah, kreatif"
                 />
                 <p className="text-xs text-warm-gray mt-1 font-body">Pisahkan dengan koma.</p>
@@ -539,13 +939,13 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 </select>
               </Field>
               <Field label="Fakultas" required>
-                <input {...field("fakultas")} placeholder="mis. Teknik, MIPA, Ekonomika dan Bisnis" />
+                <input {...textField("fakultas")} placeholder="mis. Teknik, MIPA, Ekonomika dan Bisnis" />
               </Field>
               <Field label="Program Studi" required>
-                <input {...field("prodi")} placeholder="mis. Teknik Informatika, Matematika" />
+                <input {...textField("prodi")} placeholder="mis. Teknik Informatika, Matematika" />
               </Field>
               <Field label="Asal SMA atau Sederajat">
-                <input {...field("asalSma")} placeholder="mis. SMAN 1 Yogyakarta" />
+                <input {...textField("asalSma")} placeholder="mis. SMAN 1 Yogyakarta" />
               </Field>
             </div>
           </fieldset>
@@ -561,6 +961,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   type="tel"
                   inputMode="numeric"
                   pattern="[0-9]*"
+                  maxLength={PHONE_MAX_DIGITS}
                   {...field("noTelp")}
                   placeholder="mis. 081234567890"
                   autoComplete="tel"
@@ -569,13 +970,13 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               <Field label="Alamat Email" required>
                 <input
                   type="email"
-                  {...field("email")}
+                  {...textField("email")}
                   placeholder="mis. nama@mail.ugm.ac.id"
                   autoComplete="email"
                 />
               </Field>
               <Field label="Alamat Asal">
-                <textarea {...field("alamatAsal")} placeholder="Alamat sesuai KTP atau domisili asal" />
+                <textarea {...textField("alamatAsal")} placeholder="Alamat sesuai KTP atau domisili asal" />
               </Field>
               <Field label="Jenis Tempat Tinggal di Jogja">
                 <select {...field("jenisTempat")}>
@@ -584,7 +985,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                 </select>
               </Field>
               <Field label="Alamat di Yogyakarta">
-                <textarea {...field("alamatJogja")} placeholder="Alamat kos, asrama, atau rumah saat ini di Yogyakarta" />
+                <textarea {...textField("alamatJogja")} placeholder="Alamat kos, asrama, atau rumah saat ini di Yogyakarta" />
               </Field>
             </div>
           </fieldset>
@@ -596,13 +997,13 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             <legend>Data Orang Tua atau Wali</legend>
             <div className="space-y-4">
               <Field label="Nama Orang Tua atau Wali">
-                <input {...field("namaOrtu")} placeholder="mis. Bapak/Ibu Santoso" />
+                <input {...textField("namaOrtu")} placeholder="mis. Bapak/Ibu Santoso" />
               </Field>
               <Field label="Nomor Telepon Orang Tua atau Wali">
-                <input type="tel" inputMode="numeric" pattern="[0-9]*" {...field("noOrtu")} placeholder="mis. 082198765432" />
+                <input type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={PHONE_MAX_DIGITS} {...field("noOrtu")} placeholder="mis. 082198765432" />
               </Field>
               <Field label="Alamat Orang Tua atau Wali">
-                <textarea {...field("alamatOrtu")} placeholder="Alamat lengkap orang tua atau wali" />
+                <textarea {...textField("alamatOrtu")} placeholder="Alamat lengkap orang tua atau wali" />
               </Field>
             </div>
           </fieldset>
@@ -617,16 +1018,16 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             </p>
             <div className="space-y-4">
               <Field label="ID Line">
-                <input {...field("idLine")} placeholder="idlinekamu" />
+                <input {...textField("idLine")} placeholder="idlinekamu" />
               </Field>
               <Field label="Instagram">
-                <input {...field("idInstagram")} placeholder="@usernamekamu" />
+                <input {...textField("idInstagram")} placeholder="@usernamekamu" />
               </Field>
               <Field label="Facebook">
-                <input {...field("idFacebook")} placeholder="username Facebook" />
+                <input {...textField("idFacebook")} placeholder="username Facebook" />
               </Field>
               <Field label="X (Twitter)">
-                <input {...field("idTwitter")} placeholder="@usernamekamu" />
+                <input {...textField("idTwitter")} placeholder="@usernamekamu" />
               </Field>
             </div>
           </fieldset>
@@ -646,24 +1047,24 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               {values.pernahMb === "true" && (
                 <>
                   <Field label="Nama Unit Sebelumnya">
-                    <input {...field("unitSebelumnya")} placeholder="mis. Gita Bahana Taruna, SMA Taruna Nusantara" />
+                    <input {...textField("unitSebelumnya")} placeholder="mis. Gita Bahana Taruna, SMA Taruna Nusantara" />
                   </Field>
                   <Field label="Section">
-                    <input {...field("section")} placeholder="mis. Trumpet, Snare, Color Guard" />
+                    <input {...textField("section")} placeholder="mis. Trumpet, Snare, Color Guard" />
                   </Field>
                   <Field label="Kemampuan Alat">
-                    <textarea {...field("kemampuanAlat")} placeholder="Jelaskan kemampuan bermain alat musik atau menari yang kamu miliki" />
+                    <textarea {...textField("kemampuanAlat")} placeholder="Jelaskan kemampuan bermain alat musik atau menari yang kamu miliki" />
                   </Field>
                 </>
               )}
               <Field label="Bidang Tari yang Diminati">
-                <input {...field("bidangTari")} placeholder="mis. Color Guard, Majorette, atau Flag. Kosongkan jika tidak ada" />
+                <input {...textField("bidangTari")} placeholder="mis. Color Guard, Majorette, atau Flag. Kosongkan jika tidak ada" />
               </Field>
               <Field label="Bidang Musik yang Diminati">
-                <input {...field("bidangMusik")} placeholder="mis. Brass, Battery Percussion, atau Pit. Kosongkan jika tidak ada" />
+                <input {...textField("bidangMusik")} placeholder="mis. Brass, Battery Percussion, atau Pit. Kosongkan jika tidak ada" />
               </Field>
               <Field label="Organisasi Lain yang Diikuti">
-                <input {...field("organisasi")} placeholder="mis. BEM Fakultas, UKM Paduan Suara" />
+                <input {...textField("organisasi")} placeholder="mis. BEM Fakultas, UKM Paduan Suara" />
               </Field>
             </div>
           </fieldset>
@@ -675,14 +1076,16 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
             <legend>Berkas</legend>
             <div className="space-y-5">
               <div className="p-4 rounded-xl bg-parchment/50 border border-border text-sm font-body text-warm-gray leading-relaxed mb-2">
-                <strong className="text-ink">Ketentuan foto:</strong> Format JPG atau PNG, ukuran maksimal 5 MB per file.
+                <strong className="text-ink">Ketentuan foto:</strong> Format JPG atau PNG, ukuran maksimal 7 MB per file.
                 Foto akan dikompres otomatis sebelum dikirim.
               </div>
               <Field label="Pas Foto (latar polos, wajah terlihat jelas)" required>
                 <input
                   type="file"
-                  accept="image/*"
-                  onChange={(e) => setPasFoto(e.target.files?.[0] ?? null)}
+                  accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                  onChange={(event) =>
+                    handleImageChange(event, "Pas foto", setPasFoto)
+                  }
                 />
                 {pasFoto && (
                   <p className="text-xs text-crimson mt-1 font-body font-medium">
@@ -693,8 +1096,10 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               <Field label="Foto Kartu Tanda Mahasiswa (KTM)" required>
                 <input
                   type="file"
-                  accept="image/*"
-                  onChange={(e) => setKtm(e.target.files?.[0] ?? null)}
+                  accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                  onChange={(event) =>
+                    handleImageChange(event, "Foto KTM", setKtm)
+                  }
                 />
                 {ktm && (
                   <p className="text-xs text-crimson mt-1 font-body font-medium">
@@ -763,11 +1168,17 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               <Field label="Screenshot Bukti Pembayaran" required>
                 <input
                   type="file"
-                  accept="image/*"
-                  onChange={(e) => setPaymentProof(e.target.files?.[0] ?? null)}
+                  accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                  onChange={(event) =>
+                    handleImageChange(
+                      event,
+                      "Bukti pembayaran",
+                      setPaymentProof,
+                    )
+                  }
                 />
                 <p className="mt-1 text-xs leading-relaxed text-warm-gray font-body">
-                  Format JPG atau PNG, ukuran maksimal 5 MB. Pastikan status transaksi dan tujuan pembayaran terlihat jelas.
+                  Format JPG atau PNG, ukuran maksimal 7 MB. Pastikan status transaksi dan tujuan pembayaran terlihat jelas.
                 </p>
                 {paymentProof && (
                   <p className="mt-1 text-xs font-medium text-crimson font-body">
@@ -819,8 +1230,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                                 onClick={() => update("sessionId", String(session.id))}
                                 className={`min-h-24 rounded-lg px-4 py-3.5 text-left font-body transition-[background-color,box-shadow,transform] duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100 ${
                                   selected
-                                    ? "bg-crimson/5 shadow-[0_0_0_2px_#AD2829]"
-                                    : "bg-paper shadow-[0_0_0_1px_rgba(34,30,27,0.14)] hover:bg-parchment/25 hover:shadow-[0_0_0_1px_rgba(173,40,41,0.5)] active:scale-[0.96]"
+                                    ? "bg-crimson/5 ring-2 ring-crimson"
+                                    : "bg-paper ring-1 ring-ink/15 hover:bg-parchment/25 hover:ring-crimson/50 active:scale-[0.96]"
                                 }`}
                               >
                                 <span className="flex items-start justify-between gap-4">
@@ -835,8 +1246,8 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                                   <span
                                     className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full transition-[background-color,box-shadow] duration-200 ${
                                       selected
-                                        ? "bg-crimson text-paper shadow-[0_0_0_1px_#AD2829]"
-                                        : "bg-paper text-transparent shadow-[0_0_0_1px_rgba(34,30,27,0.28)]"
+                                        ? "bg-crimson text-paper ring-1 ring-crimson"
+                                        : "bg-paper text-transparent ring-1 ring-ink/30"
                                     }`}
                                     aria-hidden="true"
                                   >
@@ -867,31 +1278,37 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               </div>
 
               {/* Summary review */}
-              <div className="rounded-xl border border-border bg-parchment/30 p-5 space-y-2">
-                <p className="font-body text-xs font-bold tracking-[0.12em] text-warm-gray uppercase mb-3">
+              <div className="rounded-xl border border-border bg-parchment/30 p-5 sm:p-6">
+                <p className="font-body text-xs font-bold tracking-[0.12em] text-warm-gray uppercase">
                   Ringkasan Data
                 </p>
-                {[
-                  { label: "Nama", value: values.namaLengkap },
-                  { label: "NIM", value: values.nim },
-                  { label: "Prodi", value: [values.jenjangStudi, values.prodi, values.fakultas].filter(Boolean).join(", ") },
-                  { label: "Email", value: values.email },
-                  {
-                    label: "Sesi",
-                    value: selectedSession
-                      ? `${selectedSession.dayLabel}, Sesi ${selectedSession.sessionNo}, ${getPlacementSessionTime(selectedSession.dayLabel, selectedSession.sessionNo)}`
-                      : "Belum dipilih",
-                  },
-                  { label: "Pas Foto", value: pasFoto?.name ?? "Belum diunggah" },
-                  { label: "KTM", value: ktm?.name ?? "Belum diunggah" },
-                  { label: "Biaya", value: REGISTRATION_FEE_LABEL },
-                  { label: "Bukti Bayar", value: paymentProof?.name ?? "Belum diunggah" },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex gap-3 text-sm font-body">
-                    <span className="text-warm-gray w-24 shrink-0">{label}</span>
-                    <span className="min-w-0 text-ink font-medium break-words">{value || "Belum diisi"}</span>
-                  </div>
-                ))}
+                <div className="mt-4 divide-y divide-border/80">
+                  {summarySections.map(({ title, rows }) => {
+                    const visibleRows = rows.filter(({ value }) => value.trim());
+                    if (visibleRows.length === 0) return null;
+
+                    return (
+                      <section key={title} className="py-4 first:pt-0 last:pb-0">
+                        <h3 className="font-body text-xs font-bold text-ink">
+                          {title}
+                        </h3>
+                        <dl className="mt-2.5 space-y-2">
+                          {visibleRows.map(({ label, value }) => (
+                            <div
+                              key={label}
+                              className="grid gap-0.5 font-body text-sm sm:grid-cols-[10.5rem_minmax(0,1fr)] sm:gap-4"
+                            >
+                              <dt className="text-warm-gray">{label}</dt>
+                              <dd className="min-w-0 whitespace-pre-wrap break-words font-medium text-ink">
+                                {value}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </section>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Turnstile CAPTCHA ─ only mounts on last step */}
@@ -909,7 +1326,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
               </div>
 
               {status.state === "error" && (
-                <p className="font-body text-sm text-crimson bg-crimson/5 border border-crimson/20 rounded-lg px-4 py-3">
+                <p role="alert" className="font-body text-sm text-crimson bg-crimson/5 border border-crimson/20 rounded-lg px-4 py-3">
                   {status.message}
                 </p>
               )}
@@ -919,7 +1336,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
         {/* ── Step-level validation error ── */}
         {stepError && (
-          <p className="mt-4 font-body text-sm text-crimson bg-crimson/5 border border-crimson/20 rounded-lg px-4 py-3">
+          <p role="alert" className="mt-4 font-body text-sm text-crimson bg-crimson/5 border border-crimson/20 rounded-lg px-4 py-3">
             {stepError}
           </p>
         )}
@@ -980,15 +1397,30 @@ function Field({
   required?: boolean;
   children: React.ReactNode;
 }) {
+  const controlId = useId();
+  const childArray = Children.toArray(children);
+  const controlIndex = childArray.findIndex((child) => isValidElement(child));
+  const labelledChildren = childArray.map((child, index) =>
+    index === controlIndex && isValidElement(child)
+      ? cloneElement(
+          child as React.ReactElement<{ id?: string }>,
+          { id: controlId },
+        )
+      : child,
+  );
+
   return (
     <div className="relative">
-      <label className="block font-body text-sm font-semibold text-ink mb-1.5">
+      <label
+        htmlFor={controlId}
+        className="block font-body text-sm font-semibold text-ink mb-1.5"
+      >
         {label}
         {required && (
           <span className="text-crimson ml-1" aria-label="wajib diisi">*</span>
         )}
       </label>
-      {children}
+      {labelledChildren}
     </div>
   );
 }

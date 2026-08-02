@@ -5,7 +5,8 @@ import { SiteHeader } from "@/components/site-header";
 import { config, isRegistrationOpen } from "@/lib/config";
 import styles from "./page.module.css";
 
-const registrationOpen = isRegistrationOpen();
+export const revalidate = 60; // Revalidate this page every 60 seconds to update the registration status
+
 const googleMapsEmbedUrl =
   "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3031.8075272304286!2d110.3848214!3d-7.769798100000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7a59b469fe8cd7%3A0xc76dc4d1ec7572e2!2sStadion%20Pancasila%20UGM%20%E2%80%94%20Universitas%20Gajah%20Mada!5e1!3m2!1sid!2sid!4v1784517950509!5m2!1sid!2sid";
 const formatDate = (value: string) =>
@@ -34,6 +35,8 @@ const galleryImages = [
 ] as const;
 
 export default function Page() {
+  const registrationOpen = isRegistrationOpen();
+
   return (
     <div className={styles.page}>
       <SiteHeader open={registrationOpen} />
@@ -121,9 +124,9 @@ function HeroPhoto({
 function Stats() {
   const stats = [
     ["1979", "Tahun Berdiri"],
-    ["10x", "Juara GPMB Nasional"],
+    ["100+", "Juara Kompetisi Nasional dan Bergengsi"],
     ["46+", "Tahun Pengalaman"],
-    ["3000+", "Alumni Aktif"],
+    ["3000+", "Alumni Aktif di Seluruh Indonesia"],
   ];
 
   return (
@@ -133,7 +136,7 @@ function Stats() {
           <div key={label}><strong>{value}</strong><span>{label}</span></div>
         ))}
       </div>
-      <div className={styles.fieldLines} aria-hidden="true"><span /><span /><span /></div>
+      <div className={styles.fieldLines} aria-hidden="true" />
     </section>
   );
 }
@@ -152,23 +155,32 @@ function About() {
       <div className={styles.aboutBody}>
         <p>
           Marching Band Universitas Gadjah Mada berdiri pada <strong>11 Maret 1979</strong>,
-          bermula sebagai unit <em>drum corps</em> kampus. Selama lebih dari empat dekade,
+          bermula dari unit <em>drum corps</em> kampus. Selama lebih dari empat dekade,
           MBUGM telah berkembang menjadi salah satu unit marching band paling bergengsi di
-          Indonesia. Rekam jejak kami mencakup gelar juara GPMB berulang kali dari 2010
-          hingga 2017, penampilan di Istana Negara, Gedung Agung, Festival Kesenian
-          Yogyakarta, dan berbagai acara internasional.
+          Indonesia - dengan rekam jejak yang membanggakan secara nasional dan regional dari
+          berbagai kategori. Selain itu, MBUGM juga telah merajut nama besarnya dalam
+          penampilan-penampilan megah di luar kompetisi seperti Parade Senja di Gedung Agung
+          Yogyakarta, Festival Kesenian Yogyakarta, Gelanggang Expo, dan berbagai acara
+          bergengsi lainnya.
         </p>
         <p>
-          MBUGM bukan hanya tentang piala atau panggung. Setiap anggota belajar tentang{" "}
-          <strong>kekeluargaan</strong>,{" "}
-          <strong>gotong royong</strong>, disiplin, dan tanggung jawab. Ikatan ini melampaui
-          masa kuliah dan membentuk komunitas alumni yang saling mendukung hingga ke seluruh
-          penjuru negeri.
+          MBUGM bukan hanya sekedar komunitas pemain musik, piala, atau panggung, tetapi
+          merupakan tempat bagi setiap anggotanya untuk bertumbuh, berkembang, dan
+          mengeksplor potensi dalam diri. MBUGM bukan hanya sekedar tempat untuk bermain
+          musik, tetapi juga tempat untuk membangun keluarga baru, identitas baru, dan relasi
+          yang saling mendukung hingga ke seluruh penjuru negeri berkat 3000 alumni aktif
+          yang masih terikat dengan keluarga besar ini.
         </p>
         <p>
-          Setiap tahun, kami membuka pintu bagi mahasiswa UGM dari semua jurusan dan latar
-          belakang. Di sini, mereka dapat bertumbuh dan menemukan versi terbaik dirinya
-          dalam balutan seragam kebanggaan merah putih.
+          MBUGM memberikan begitu banyak pengalaman dan pembelajaran baru baik dalam
+          keorganisasian, manajemen diri, hingga persiapan menuju dunia profesional - melalui
+          nilai kepemimpinan, disiplin, dan tanggung jawab yang menjadi budaya.
+        </p>
+        <p>
+          <strong>
+            Jadi, tunggu apalagi? Mari bergabung dengan keluarga besar MBUGM dan temukan
+            potensi dalam dirimu bersama kami!
+          </strong>
         </p>
       </div>
     </section>
@@ -206,12 +218,7 @@ function GalleryCta({ open }: { open: boolean }) {
     <section id="kegiatan" className={styles.galleryCta} aria-labelledby="cta-title">
       <div className={styles.galleryStrip}>
         {galleryImages.map(([src, alt]) => (
-          <button
-            className={styles.galleryItem}
-            key={src}
-            type="button"
-            aria-label={"Tampilkan foto: " + alt}
-          >
+          <figure className={styles.galleryItem} key={src}>
             <Image
               src={"/figma/" + src}
               alt={alt}
@@ -219,7 +226,7 @@ function GalleryCta({ open }: { open: boolean }) {
               sizes="(max-width: 720px) 90px, (max-width: 1050px) 126px, 30vw"
               quality={100}
             />
-          </button>
+          </figure>
         ))}
       </div>
       <div className={styles.ctaCopy}>
