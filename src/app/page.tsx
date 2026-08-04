@@ -66,7 +66,7 @@ function Hero({ open }: { open: boolean }) {
           <span aria-hidden="true" />
           <div>
             <p>Periode Pendaftaran {config.year}</p>
-            <time>{formatDate(config.opensAt)} sampai {formatDate(config.closesAt)}</time>
+            <time>{formatDate(config.opensAt)} — {formatDate(config.closesAt)}</time>
           </div>
         </div>
         <div className={styles.heroActions}>
