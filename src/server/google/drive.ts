@@ -22,6 +22,18 @@ export async function uploadFile(
   return res.data.id;
 }
 
+export async function replaceFile(
+  fileId: string,
+  buffer: Buffer,
+  mimeType: string,
+): Promise<void> {
+  await getDrive().files.update({
+    fileId,
+    media: { mimeType, body: Readable.from(buffer) },
+    supportsAllDrives: true,
+  });
+}
+
 // Downloads a Drive file's bytes. Used on resync to re-embed photos into the PDF
 // when we no longer have the originally uploaded buffers in memory.
 export async function downloadFile(fileId: string): Promise<Buffer> {

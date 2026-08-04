@@ -10,13 +10,15 @@ import type { Applicant } from "@/server/db/schema";
 import { getPlacementSessionLabel } from "@/server/placement-session";
 import { ApplicantDocument } from "./applicant-document";
 
-// Load /public/logo.png once and reuse it as a data URI. Returns undefined if
+// Load the shared brand logo once and reuse it as a data URI. Returns undefined if
 // the file isn't there (the template then shows a "Logo" placeholder).
 let cachedLogo: string | null | undefined;
 async function getLogo(): Promise<string | undefined> {
   if (cachedLogo !== undefined) return cachedLogo ?? undefined;
   try {
-    const buf = await readFile(join(process.cwd(), "public", "logo.png"));
+    const buf = await readFile(
+      join(process.cwd(), "public", "figma", "brand-lockup.png"),
+    );
     cachedLogo = `data:image/png;base64,${buf.toString("base64")}`;
   } catch {
     cachedLogo = null; // remember "not found" so we don't retry every time
