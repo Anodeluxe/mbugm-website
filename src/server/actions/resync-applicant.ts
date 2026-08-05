@@ -25,7 +25,7 @@ export async function resyncApplicant(
   if (!applicant) return { ok: false, error: "Pendaftar tidak ditemukan" };
 
   try {
-    await syncApplicantToGoogle(applicant);
+    await syncApplicantToGoogle(applicant, undefined, true);
     revalidatePath("/admin"); // refresh the dashboard's cached data
     return { ok: true };
   } catch (e) {

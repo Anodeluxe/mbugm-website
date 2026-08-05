@@ -8,7 +8,7 @@ import { eq, isNull, or } from "drizzle-orm";
 import { db } from "@/server/db";
 import { applicants, type Applicant } from "@/server/db/schema";
 import { renderApplicantPdf } from "@/server/pdf/render";
-import { uploadFile, downloadFile } from "./drive";
+import { uploadFile, replaceFile, downloadFile } from "./drive";
 import { appendApplicantRow } from "./sheets";
 import { toDataUri } from "@/server/images";
 import { getMissingRequiredUploadLabels } from "./sync-integrity.mjs";
@@ -34,6 +34,7 @@ export function applicantNeedsGoogleSync() {
 export async function syncApplicantToGoogle(
   applicant: Applicant,
   images?: ImageBuffers,
+  forcePdf = false,
 ): Promise<void> {
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
   if (!folderId) throw new Error("GOOGLE_DRIVE_FOLDER_ID is not set");
@@ -87,7 +88,8 @@ export async function syncApplicantToGoogle(
     !applicant.driveSynced ||
     !applicant.pdfGenerated ||
     !applicant.pdfDriveId ||
-    uploadedRequiredFile
+    uploadedRequiredFile ||
+    forcePdf
   ) {
     const pasFotoBuf = images?.pasFoto ?? (pasFotoId ? await downloadFile(pasFotoId) : undefined);
     const ktmBuf = images?.ktm ?? (ktmId ? await downloadFile(ktmId) : undefined);
@@ -100,7 +102,12 @@ export async function syncApplicantToGoogle(
       ktm: ktmBuf ? toDataUri(ktmBuf) : undefined,
       paymentProof: paymentProofBuf ? toDataUri(paymentProofBuf) : undefined,
     });
-    const pdfId = await uploadFile(pdf, `${ref}.pdf`, "application/pdf", folderId);
+    let pdfId = applicant.pdfDriveId;
+    if (pdfId) {
+      await replaceFile(pdfId, pdf, "application/pdf");
+    } else {
+      pdfId = await uploadFile(pdf, `${ref}.pdf`, "application/pdf", folderId);
+    }
     await db
       .update(applicants)
       .set({ pdfDriveId: pdfId, pdfGenerated: true, driveSynced: true })
