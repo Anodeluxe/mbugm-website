@@ -273,9 +273,7 @@ function Footer() {
         </div>
         <div className={styles.footerColumn}>
           <p>Kontak</p>
-          <a href="mailto:marchingband@ugm.ac.id">marchingband@ugm.ac.id</a>
-          <a href="https://www.instagram.com/mbugm.official/">@mbugm.official</a>
-          <span>Stadion Pancasila UGM</span>
+          <a href="https://www.instagram.com/mbugm/">@mbugm (Instagram)</a>
         </div>
       </div>
       <div className={styles.footerBottom}>
