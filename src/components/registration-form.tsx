@@ -18,9 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
-import imageCompression from "browser-image-compression";
-import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
-import { submitApplication } from "@/server/actions/submit-application";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { config, formatRupiah } from "@/lib/config";
 import {
   getPlacementSessionTime,
@@ -38,26 +36,18 @@ import {
   APPLICANT_TEXT_LIMITS,
   HEIGHT_MAX_CM,
   HEIGHT_MIN_CM,
-  MAX_UPLOAD_BYTES,
   PHONE_MAX_DIGITS,
-  PHONE_MIN_DIGITS,
   WEIGHT_MAX_KG,
   WEIGHT_MIN_KG,
-  isValidBirthDate,
-  isValidNim,
-  isValidPhone,
-  isValidTraits,
 } from "@/lib/applicant-rules";
 import type { DraftAttachmentName } from "@/lib/registration-draft";
 import { RegistrationDraftStore } from "@/lib/registration-draft-store";
-
-type SessionOption = {
-  id: number;
-  dayLabel: string;
-  sessionNo: number;
-  quota: number;
-  bookedCount: number;
-};
+import {
+  type PlacementSessionOption,
+  RegistrationStepValidator,
+  validateRegistrationImage,
+} from "@/lib/registration-step-validator";
+import { useRegistrationSubmission } from "@/hooks/use-registration-submission";
 
 const REGISTRATION_FEE_LABEL = formatRupiah(config.registrationFee);
 
@@ -74,33 +64,8 @@ const INITIAL = {
 
 type FormValues = typeof INITIAL;
 
-const COMPRESS_OPTS = { maxSizeMB: 1, maxWidthOrHeight: 1600, useWebWorker: true };
 const draftStore = new RegistrationDraftStore<FormValues>();
 const SAVE_DEBOUNCE_MS = 400;
-
-// Required fields per step — used for manual per-step validation before advancing.
-const REQUIRED_PER_STEP: Partial<Record<number, (keyof FormValues)[]>> = {
-  0: ["nim", "namaLengkap", "tempatLahir", "tanggalLahir", "jenisKelamin", "agama"],
-  1: ["tigaKata"],
-  2: ["fakultas", "prodi"],
-  3: ["noTelp", "email"],
-  9: ["sessionId"],
-};
-
-const FIELD_LABELS: Partial<Record<keyof FormValues, string>> = {
-  nim: "NIM",
-  namaLengkap: "Nama Lengkap",
-  tempatLahir: "Tempat Lahir",
-  tanggalLahir: "Tanggal Lahir",
-  jenisKelamin: "Jenis Kelamin",
-  agama: "Agama",
-  tigaKata: "Sebutkan 3 sifat yang menggambarkan dirimu",
-  fakultas: "Fakultas",
-  prodi: "Program Studi",
-  noTelp: "Nomor Telepon",
-  email: "Email",
-  sessionId: "Sesi Penempatan",
-};
 
 const STEPS = [
   { label: "Data Diri" },
@@ -123,25 +88,6 @@ function todayInputValue() {
   return today.toISOString().slice(0, 10);
 }
 
-function isValidEmail(value: string) {
-  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
-}
-
-function isOptionalIntegerInRange(value: string, min: number, max: number) {
-  if (!value.trim()) return true;
-  const number = Number(value);
-  return Number.isInteger(number) && number >= min && number <= max;
-}
-
-function validateImage(file: File | null, label: string) {
-  if (!file) return `${label} wajib diunggah.`;
-  if (file.size > MAX_UPLOAD_BYTES) return `${label} maksimal 7 MB.`;
-  if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
-    return `${label} harus menggunakan format JPG atau PNG.`;
-  }
-  return null;
-}
-
 function hasDraftContent(
   values: FormValues,
   currentStep: number,
@@ -159,11 +105,12 @@ function hasDraftContent(
   );
 }
 
-export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
+export function RegistrationForm({
+  sessions,
+}: {
+  sessions: PlacementSessionOption[];
+}) {
   const [submissionToken, setSubmissionToken] = useState(() => crypto.randomUUID());
-  const [formLoadedAt] = useState(() => Date.now());
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const turnstileRef = useRef<TurnstileInstance | null>(null);
   const formTopRef = useRef<HTMLDivElement | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -186,13 +133,6 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     ktm,
     paymentProof,
   );
-
-  const [status, setStatus] = useState<
-    | { state: "idle" }
-    | { state: "submitting" }
-    | { state: "success"; referenceNumber: string; draftCleared: boolean }
-    | { state: "error"; message: string }
-  >({ state: "idle" });
 
   function update(name: keyof FormValues, value: string) {
     const nextValue = name === "noTelp" || name === "noOrtu"
@@ -224,7 +164,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     setFile: (file: File | null) => void,
   ) {
     const file = event.target.files?.[0] ?? null;
-    const error = validateImage(file, label);
+    const error = validateRegistrationImage(file, label);
     if (error) {
       event.target.value = "";
       setFile(null);
@@ -247,6 +187,30 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   const scrollToTop = useCallback(() => {
     formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  const {
+    handleSubmit,
+    resetSubmission,
+    setTurnstileToken,
+    status,
+    turnstileRef,
+    turnstileToken,
+  } = useRegistrationSubmission({
+    values,
+    submissionToken,
+    pasFoto,
+    ktm,
+    paymentProof,
+    clearDraft: () => draftStore.clear(),
+    onSuccess: (draftCleared) => {
+      setValues(INITIAL);
+      setPasFoto(null);
+      setKtm(null);
+      setPaymentProof(null);
+      setDraftStatus(draftCleared ? "idle" : "error");
+    },
+    scrollToTop,
+  });
 
   useEffect(() => {
     let active = true;
@@ -309,94 +273,14 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     status.state,
   ]);
 
-  function validateStep(step: number): string | null {
-    const missingField = REQUIRED_PER_STEP[step]?.find((key) => !values[key]?.trim());
-    if (missingField) {
-      return `Kolom "${FIELD_LABELS[missingField] ?? missingField}" wajib diisi.`;
-    }
-
-    const stepValidators: Partial<Record<number, () => string | null>> = {
-      0: () => {
-        if (!isValidNim(values.nim)) {
-          return "NIM harus terdiri dari 5-32 karakter dan hanya boleh memakai huruf, angka, spasi, garis miring, titik, atau tanda hubung.";
-        }
-        if (values.namaLengkap.trim().length < 2) {
-          return "Nama lengkap minimal 2 karakter.";
-        }
-        if (values.tempatLahir.trim().length < 2) {
-          return "Tempat lahir minimal 2 karakter.";
-        }
-        if (!isValidBirthDate(values.tanggalLahir)) {
-          return "Tanggal lahir harus berupa tanggal nyata antara 1 Januari 1900 dan hari ini.";
-        }
-        if (
-          !isOptionalIntegerInRange(
-            values.tinggiBadanCm,
-            HEIGHT_MIN_CM,
-            HEIGHT_MAX_CM,
-          )
-        ) {
-          return `Tinggi badan harus berupa bilangan bulat ${HEIGHT_MIN_CM}-${HEIGHT_MAX_CM} cm.`;
-        }
-        if (
-          !isOptionalIntegerInRange(
-            values.beratBadanKg,
-            WEIGHT_MIN_KG,
-            WEIGHT_MAX_KG,
-          )
-        ) {
-          return `Berat badan harus berupa bilangan bulat ${WEIGHT_MIN_KG}-${WEIGHT_MAX_KG} kg.`;
-        }
-        return null;
-      },
-      1: () =>
-        isValidTraits(values.tigaKata)
-          ? null
-          : "Tuliskan tepat 3 sifat, pisahkan dengan koma, dan batasi setiap sifat maksimal 40 karakter.",
-      2: () => {
-        if (values.fakultas.trim().length < 2) {
-          return "Fakultas minimal 2 karakter.";
-        }
-        if (values.prodi.trim().length < 2) {
-          return "Program studi minimal 2 karakter.";
-        }
-        return null;
-      },
-      3: () => {
-        if (!isValidPhone(values.noTelp)) {
-          return `Nomor telepon harus mengandung ${PHONE_MIN_DIGITS}-${PHONE_MAX_DIGITS} digit.`;
-        }
-        if (!isValidEmail(values.email)) return "Format email belum valid.";
-        return null;
-      },
-      4: () =>
-        values.noOrtu.trim() && !isValidPhone(values.noOrtu)
-          ? `Nomor telepon orang tua harus mengandung ${PHONE_MIN_DIGITS}-${PHONE_MAX_DIGITS} digit.`
-          : null,
-      7: () => {
-        return (
-          validateImage(pasFoto, "Pas foto") ??
-          validateImage(ktm, "Foto KTM")
-        );
-      },
-      8: () => validateImage(paymentProof, "Bukti pembayaran"),
-      9: () => {
-        if (sessions.length === 0) {
-          return "Sesi penempatan belum tersedia. Hubungi panitia — pendaftaran belum bisa dikirim.";
-        }
-        if (!selectedSession) return "Pilih sesi penempatan yang tersedia.";
-        if (selectedSession.bookedCount >= selectedSession.quota) {
-          return "Sesi yang dipilih sudah penuh. Silakan pilih sesi lain.";
-        }
-        return null;
-      },
-    };
-
-    return stepValidators[step]?.() ?? null;
-  }
-
   function handleNext() {
-    const err = validateStep(currentStep);
+    const err = new RegistrationStepValidator({
+      values,
+      sessions,
+      pasFoto,
+      ktm,
+      paymentProof,
+    }).validate(currentStep);
     if (err) {
       setStepError(err);
       return;
@@ -436,87 +320,11 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       setKtm(null);
       setPaymentProof(null);
       setStepError(null);
-      setStatus({ state: "idle" });
-      setTurnstileToken("");
-      turnstileRef.current?.reset();
+      resetSubmission();
       setDraftStatus("deleted");
       scrollToTop();
     } catch {
       setDraftStatus("error");
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const imageError =
-      validateImage(pasFoto, "Pas foto") ??
-      validateImage(ktm, "Foto KTM") ??
-      validateImage(paymentProof, "Bukti pembayaran");
-    if (imageError) {
-      return setStatus({ state: "error", message: imageError });
-    }
-    if (!turnstileToken) return setStatus({ state: "error", message: "Mohon selesaikan verifikasi CAPTCHA." });
-
-    setStatus({ state: "submitting" });
-    let compressedImages: File[];
-    try {
-      compressedImages = await Promise.all([
-        imageCompression(pasFoto as File, COMPRESS_OPTS),
-        imageCompression(ktm as File, COMPRESS_OPTS),
-        imageCompression(paymentProof as File, COMPRESS_OPTS),
-      ]);
-    } catch {
-      setStatus({
-        state: "error",
-        message: "Gambar gagal dikompres. Pilih file JPG atau PNG lain.",
-      });
-      return;
-    }
-
-    try {
-      const [pasFotoC, ktmC, paymentProofC] = compressedImages;
-      const fd = new FormData();
-      for (const [k, v] of Object.entries(values)) fd.append(k, v);
-      fd.append("submissionToken", submissionToken);
-      fd.append("formLoadedAt", String(formLoadedAt));
-      fd.append("turnstileToken", turnstileToken);
-      fd.append("pasFoto", pasFotoC, "pasfoto.jpg");
-      fd.append("ktm", ktmC, "ktm.jpg");
-      fd.append("paymentProof", paymentProofC, "bukti-pembayaran.jpg");
-
-      const result = await submitApplication(fd);
-      if (result.ok) {
-        let draftCleared = true;
-        try {
-          await draftStore.clear();
-        } catch {
-          draftCleared = false;
-        }
-
-        setValues(INITIAL);
-        setPasFoto(null);
-        setKtm(null);
-        setPaymentProof(null);
-        setDraftStatus(draftCleared ? "idle" : "error");
-        setStatus({
-          state: "success",
-          referenceNumber: result.referenceNumber,
-          draftCleared,
-        });
-        scrollToTop();
-      } else {
-        setStatus({ state: "error", message: result.error });
-        turnstileRef.current?.reset();
-        setTurnstileToken("");
-      }
-    } catch {
-      setStatus({
-        state: "error",
-        message:
-          "Koneksi ke server terputus. Isianmu masih tersimpan, silakan coba lagi.",
-      });
-      turnstileRef.current?.reset();
-      setTurnstileToken("");
     }
   }
 

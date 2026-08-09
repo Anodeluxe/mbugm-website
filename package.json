@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node src/lib/check-placement-sessions.mjs && node scripts/assert-session-quota.mjs && node scripts/assert-sync-integrity.mjs && node scripts/assert-pdf-batch.mjs && node scripts/assert-applicant-rules.mjs && node scripts/assert-registration-draft.mjs",
+    "test": "node src/lib/check-placement-sessions.mjs && node scripts/assert-session-quota.mjs && node scripts/assert-sync-integrity.mjs && node scripts/assert-pdf-batch.mjs && node scripts/assert-applicant-rules.mjs && node scripts/assert-registration-draft.mjs && tsx scripts/assert-registration-step-validator.mjs && tsx scripts/assert-registration-submission.mjs",
     "check": "npm run lint && npm test && npm run build",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -39,6 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   },
   "overrides": {
