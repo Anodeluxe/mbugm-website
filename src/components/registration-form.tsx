@@ -48,6 +48,15 @@ import {
   isValidPhone,
   isValidTraits,
 } from "@/lib/applicant-rules";
+import {
+  DRAFT_ATTACHMENT_NAMES,
+  type DraftAttachmentName,
+  type DraftAttachments,
+  type DraftMetadata,
+  type RegistrationDraft,
+  restoreRegistrationDraft,
+  splitRegistrationDraft,
+} from "@/lib/registration-draft";
 
 type SessionOption = {
   id: number;
@@ -75,7 +84,13 @@ type FormValues = typeof INITIAL;
 const COMPRESS_OPTS = { maxSizeMB: 1, maxWidthOrHeight: 1600, useWebWorker: true };
 const DRAFT_DB_NAME = "mbugm-registration-draft";
 const DRAFT_STORE_NAME = "drafts";
-const DRAFT_KEY = "daftar-v1";
+const LEGACY_DRAFT_KEY = "daftar-v1";
+const DRAFT_METADATA_KEY = "daftar-v2:metadata";
+const DRAFT_ATTACHMENT_KEYS: Record<DraftAttachmentName, string> = {
+  pasFoto: "daftar-v2:file:pasFoto",
+  ktm: "daftar-v2:file:ktm",
+  paymentProof: "daftar-v2:file:paymentProof",
+};
 const SAVE_DEBOUNCE_MS = 400;
 
 // Required fields per step — used for manual per-step validation before advancing.
@@ -142,15 +157,7 @@ function validateImage(file: File | null, label: string) {
   return null;
 }
 
-type DraftPayload = {
-  submissionToken?: string;
-  values: FormValues;
-  currentStep: number;
-  furthestStep?: number;
-  pasFoto: File | null;
-  ktm: File | null;
-  paymentProof: File | null;
-};
+type DraftPayload = RegistrationDraft<FormValues>;
 
 function hasDraftContent(
   values: FormValues,
@@ -185,22 +192,66 @@ function openDraftDb(): Promise<IDBDatabase> {
 
 async function readDraft(): Promise<DraftPayload | null> {
   const db = await openDraftDb();
-  return new Promise((resolve, reject) => {
+  const stored = await new Promise<{
+    metadata: DraftMetadata<FormValues> | null;
+    attachments: Partial<DraftAttachments>;
+    legacy: DraftPayload | null;
+  }>((resolve, reject) => {
     const tx = db.transaction(DRAFT_STORE_NAME, "readonly");
-    const req = tx.objectStore(DRAFT_STORE_NAME).get(DRAFT_KEY);
-    req.onsuccess = () => resolve((req.result as DraftPayload | undefined) ?? null);
-    req.onerror = () => reject(req.error);
-    tx.oncomplete = () => db.close();
-    tx.onerror = () => db.close();
-    tx.onabort = () => db.close();
+    const store = tx.objectStore(DRAFT_STORE_NAME);
+    const metadata = store.get(DRAFT_METADATA_KEY);
+    const legacy = store.get(LEGACY_DRAFT_KEY);
+    const attachmentRequests = Object.fromEntries(
+      DRAFT_ATTACHMENT_NAMES.map((name) => [
+        name,
+        store.get(DRAFT_ATTACHMENT_KEYS[name]),
+      ]),
+    ) as Record<DraftAttachmentName, IDBRequest<File | undefined>>;
+
+    tx.oncomplete = () => {
+      db.close();
+      resolve({
+        metadata:
+          (metadata.result as DraftMetadata<FormValues> | undefined) ?? null,
+        attachments: Object.fromEntries(
+          DRAFT_ATTACHMENT_NAMES.flatMap((name) => {
+            const file = attachmentRequests[name].result;
+            return file ? [[name, file]] : [];
+          }),
+        ) as Partial<DraftAttachments>,
+        legacy: (legacy.result as DraftPayload | undefined) ?? null,
+      });
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
+    tx.onabort = () => {
+      db.close();
+      reject(tx.error);
+    };
   });
+
+  const draft = restoreRegistrationDraft(
+    stored.metadata,
+    stored.attachments,
+    stored.legacy,
+  );
+  if (!draft || stored.metadata || !stored.legacy) return draft;
+
+  try {
+    await writeDraftSnapshot(draft);
+  } catch (error) {
+    console.error("Draft migration failed:", error);
+  }
+  return draft;
 }
 
-async function writeDraft(draft: DraftPayload) {
+async function updateDraftStore(update: (store: IDBObjectStore) => void) {
   const db = await openDraftDb();
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction(DRAFT_STORE_NAME, "readwrite");
-    tx.objectStore(DRAFT_STORE_NAME).put(draft, DRAFT_KEY);
+    update(tx.objectStore(DRAFT_STORE_NAME));
     tx.oncomplete = () => {
       db.close();
       resolve();
@@ -216,23 +267,39 @@ async function writeDraft(draft: DraftPayload) {
   });
 }
 
-async function clearDraft() {
-  const db = await openDraftDb();
-  return new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(DRAFT_STORE_NAME, "readwrite");
-    tx.objectStore(DRAFT_STORE_NAME).delete(DRAFT_KEY);
-    tx.oncomplete = () => {
-      db.close();
-      resolve();
-    };
-    tx.onerror = () => {
-      db.close();
-      reject(tx.error);
-    };
-    tx.onabort = () => {
-      db.close();
-      reject(tx.error);
-    };
+function writeDraftMetadata(metadata: DraftMetadata<FormValues>) {
+  return updateDraftStore((store) => {
+    store.put(metadata, DRAFT_METADATA_KEY);
+  });
+}
+
+function writeDraftAttachment(name: DraftAttachmentName, file: File | null) {
+  return updateDraftStore((store) => {
+    if (file) store.put(file, DRAFT_ATTACHMENT_KEYS[name]);
+    else store.delete(DRAFT_ATTACHMENT_KEYS[name]);
+  });
+}
+
+function writeDraftSnapshot(draft: DraftPayload) {
+  const { metadata, attachments } = splitRegistrationDraft(draft);
+  return updateDraftStore((store) => {
+    store.put(metadata, DRAFT_METADATA_KEY);
+    for (const name of DRAFT_ATTACHMENT_NAMES) {
+      const file = attachments[name];
+      if (file) store.put(file, DRAFT_ATTACHMENT_KEYS[name]);
+      else store.delete(DRAFT_ATTACHMENT_KEYS[name]);
+    }
+    store.delete(LEGACY_DRAFT_KEY);
+  });
+}
+
+function clearDraft() {
+  return updateDraftStore((store) => {
+    store.delete(LEGACY_DRAFT_KEY);
+    store.delete(DRAFT_METADATA_KEY);
+    for (const name of DRAFT_ATTACHMENT_NAMES) {
+      store.delete(DRAFT_ATTACHMENT_KEYS[name]);
+    }
   });
 }
 
@@ -297,6 +364,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
   function handleImageChange(
     event: React.ChangeEvent<HTMLInputElement>,
     label: string,
+    name: DraftAttachmentName,
     setFile: (file: File | null) => void,
   ) {
     const file = event.target.files?.[0] ?? null;
@@ -305,11 +373,19 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       event.target.value = "";
       setFile(null);
       setStepError(error);
+      setDraftStatus("saving");
+      void writeDraftAttachment(name, null)
+        .then(() => setDraftStatus("saved"))
+        .catch(() => setDraftStatus("error"));
       return;
     }
 
     setStepError(null);
     setFile(file);
+    setDraftStatus("saving");
+    void writeDraftAttachment(name, file)
+      .then(() => setDraftStatus("saved"))
+      .catch(() => setDraftStatus("error"));
   }
 
   const scrollToTop = useCallback(() => {
@@ -356,14 +432,11 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
     const timeout = window.setTimeout(() => {
       setDraftStatus("saving");
-      void writeDraft({
+      void writeDraftMetadata({
         submissionToken,
         values,
         currentStep,
         furthestStep,
-        pasFoto,
-        ktm,
-        paymentProof,
       })
         .then(() => setDraftStatus("saved"))
         .catch(() => setDraftStatus("error"));
@@ -376,9 +449,6 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     values,
     currentStep,
     furthestStep,
-    pasFoto,
-    ktm,
-    paymentProof,
     hasDraft,
     status.state,
   ]);
@@ -1084,7 +1154,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   type="file"
                   accept={ACCEPTED_IMAGE_TYPES.join(",")}
                   onChange={(event) =>
-                    handleImageChange(event, "Pas foto", setPasFoto)
+                    handleImageChange(event, "Pas foto", "pasFoto", setPasFoto)
                   }
                 />
                 {pasFoto && (
@@ -1098,7 +1168,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                   type="file"
                   accept={ACCEPTED_IMAGE_TYPES.join(",")}
                   onChange={(event) =>
-                    handleImageChange(event, "Foto KTM", setKtm)
+                    handleImageChange(event, "Foto KTM", "ktm", setKtm)
                   }
                 />
                 {ktm && (
@@ -1173,6 +1243,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
                     handleImageChange(
                       event,
                       "Bukti pembayaran",
+                      "paymentProof",
                       setPaymentProof,
                     )
                   }
