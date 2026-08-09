@@ -48,15 +48,8 @@ import {
   isValidPhone,
   isValidTraits,
 } from "@/lib/applicant-rules";
-import {
-  DRAFT_ATTACHMENT_NAMES,
-  type DraftAttachmentName,
-  type DraftAttachments,
-  type DraftMetadata,
-  type RegistrationDraft,
-  restoreRegistrationDraft,
-  splitRegistrationDraft,
-} from "@/lib/registration-draft";
+import type { DraftAttachmentName } from "@/lib/registration-draft";
+import { RegistrationDraftStore } from "@/lib/registration-draft-store";
 
 type SessionOption = {
   id: number;
@@ -82,15 +75,7 @@ const INITIAL = {
 type FormValues = typeof INITIAL;
 
 const COMPRESS_OPTS = { maxSizeMB: 1, maxWidthOrHeight: 1600, useWebWorker: true };
-const DRAFT_DB_NAME = "mbugm-registration-draft";
-const DRAFT_STORE_NAME = "drafts";
-const LEGACY_DRAFT_KEY = "daftar-v1";
-const DRAFT_METADATA_KEY = "daftar-v2:metadata";
-const DRAFT_ATTACHMENT_KEYS: Record<DraftAttachmentName, string> = {
-  pasFoto: "daftar-v2:file:pasFoto",
-  ktm: "daftar-v2:file:ktm",
-  paymentProof: "daftar-v2:file:paymentProof",
-};
+const draftStore = new RegistrationDraftStore<FormValues>();
 const SAVE_DEBOUNCE_MS = 400;
 
 // Required fields per step — used for manual per-step validation before advancing.
@@ -157,8 +142,6 @@ function validateImage(file: File | null, label: string) {
   return null;
 }
 
-type DraftPayload = RegistrationDraft<FormValues>;
-
 function hasDraftContent(
   values: FormValues,
   currentStep: number,
@@ -174,133 +157,6 @@ function hasDraftContent(
         name !== "pernahMb" && name !== "website" && value.trim() !== "",
     )
   );
-}
-
-function openDraftDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = window.indexedDB.open(DRAFT_DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(DRAFT_STORE_NAME)) {
-        db.createObjectStore(DRAFT_STORE_NAME);
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function readDraft(): Promise<DraftPayload | null> {
-  const db = await openDraftDb();
-  const stored = await new Promise<{
-    metadata: DraftMetadata<FormValues> | null;
-    attachments: Partial<DraftAttachments>;
-    legacy: DraftPayload | null;
-  }>((resolve, reject) => {
-    const tx = db.transaction(DRAFT_STORE_NAME, "readonly");
-    const store = tx.objectStore(DRAFT_STORE_NAME);
-    const metadata = store.get(DRAFT_METADATA_KEY);
-    const legacy = store.get(LEGACY_DRAFT_KEY);
-    const attachmentRequests = Object.fromEntries(
-      DRAFT_ATTACHMENT_NAMES.map((name) => [
-        name,
-        store.get(DRAFT_ATTACHMENT_KEYS[name]),
-      ]),
-    ) as Record<DraftAttachmentName, IDBRequest<File | undefined>>;
-
-    tx.oncomplete = () => {
-      db.close();
-      resolve({
-        metadata:
-          (metadata.result as DraftMetadata<FormValues> | undefined) ?? null,
-        attachments: Object.fromEntries(
-          DRAFT_ATTACHMENT_NAMES.flatMap((name) => {
-            const file = attachmentRequests[name].result;
-            return file ? [[name, file]] : [];
-          }),
-        ) as Partial<DraftAttachments>,
-        legacy: (legacy.result as DraftPayload | undefined) ?? null,
-      });
-    };
-    tx.onerror = () => {
-      db.close();
-      reject(tx.error);
-    };
-    tx.onabort = () => {
-      db.close();
-      reject(tx.error);
-    };
-  });
-
-  const draft = restoreRegistrationDraft(
-    stored.metadata,
-    stored.attachments,
-    stored.legacy,
-  );
-  if (!draft || stored.metadata || !stored.legacy) return draft;
-
-  try {
-    await writeDraftSnapshot(draft);
-  } catch (error) {
-    console.error("Draft migration failed:", error);
-  }
-  return draft;
-}
-
-async function updateDraftStore(update: (store: IDBObjectStore) => void) {
-  const db = await openDraftDb();
-  return new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(DRAFT_STORE_NAME, "readwrite");
-    update(tx.objectStore(DRAFT_STORE_NAME));
-    tx.oncomplete = () => {
-      db.close();
-      resolve();
-    };
-    tx.onerror = () => {
-      db.close();
-      reject(tx.error);
-    };
-    tx.onabort = () => {
-      db.close();
-      reject(tx.error);
-    };
-  });
-}
-
-function writeDraftMetadata(metadata: DraftMetadata<FormValues>) {
-  return updateDraftStore((store) => {
-    store.put(metadata, DRAFT_METADATA_KEY);
-  });
-}
-
-function writeDraftAttachment(name: DraftAttachmentName, file: File | null) {
-  return updateDraftStore((store) => {
-    if (file) store.put(file, DRAFT_ATTACHMENT_KEYS[name]);
-    else store.delete(DRAFT_ATTACHMENT_KEYS[name]);
-  });
-}
-
-function writeDraftSnapshot(draft: DraftPayload) {
-  const { metadata, attachments } = splitRegistrationDraft(draft);
-  return updateDraftStore((store) => {
-    store.put(metadata, DRAFT_METADATA_KEY);
-    for (const name of DRAFT_ATTACHMENT_NAMES) {
-      const file = attachments[name];
-      if (file) store.put(file, DRAFT_ATTACHMENT_KEYS[name]);
-      else store.delete(DRAFT_ATTACHMENT_KEYS[name]);
-    }
-    store.delete(LEGACY_DRAFT_KEY);
-  });
-}
-
-function clearDraft() {
-  return updateDraftStore((store) => {
-    store.delete(LEGACY_DRAFT_KEY);
-    store.delete(DRAFT_METADATA_KEY);
-    for (const name of DRAFT_ATTACHMENT_NAMES) {
-      store.delete(DRAFT_ATTACHMENT_KEYS[name]);
-    }
-  });
 }
 
 export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
@@ -374,7 +230,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       setFile(null);
       setStepError(error);
       setDraftStatus("saving");
-      void writeDraftAttachment(name, null)
+      void draftStore.saveAttachment(name, null)
         .then(() => setDraftStatus("saved"))
         .catch(() => setDraftStatus("error"));
       return;
@@ -383,7 +239,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
     setStepError(null);
     setFile(file);
     setDraftStatus("saving");
-    void writeDraftAttachment(name, file)
+    void draftStore.saveAttachment(name, file)
       .then(() => setDraftStatus("saved"))
       .catch(() => setDraftStatus("error"));
   }
@@ -397,7 +253,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
     void (async () => {
       try {
-        const draft = await readDraft();
+        const draft = await draftStore.load();
         if (!active) return;
         if (draft) {
           if (draft.submissionToken) setSubmissionToken(draft.submissionToken);
@@ -432,7 +288,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
     const timeout = window.setTimeout(() => {
       setDraftStatus("saving");
-      void writeDraftMetadata({
+      void draftStore.saveMetadata({
         submissionToken,
         values,
         currentStep,
@@ -571,7 +427,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
 
     setDraftStatus("clearing");
     try {
-      await clearDraft();
+      await draftStore.clear();
       setSubmissionToken(crypto.randomUUID());
       setValues(INITIAL);
       setCurrentStep(0);
@@ -632,7 +488,7 @@ export function RegistrationForm({ sessions }: { sessions: SessionOption[] }) {
       if (result.ok) {
         let draftCleared = true;
         try {
-          await clearDraft();
+          await draftStore.clear();
         } catch {
           draftCleared = false;
         }
