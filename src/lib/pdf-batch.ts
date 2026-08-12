@@ -14,6 +14,27 @@ export function getPdfBatchRange(page: number, total: number) {
   return { start, end: Math.min(page * PDF_BATCH_SIZE, total) };
 }
 
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  map: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+
+  async function worker() {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await map(items[index]);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker),
+  );
+  return results;
+}
+
 export function streamPdf(bytes: Uint8Array): ReadableStream<Uint8Array> {
   let offset = 0;
   return new ReadableStream({
