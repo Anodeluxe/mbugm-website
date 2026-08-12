@@ -31,92 +31,159 @@ export function applicantNeedsGoogleSync() {
   );
 }
 
-export async function syncApplicantToGoogle(
+class ApplicantGoogleSyncService {
+  private pasFotoId: string | null;
+  private ktmId: string | null;
+  private paymentProofId: string | null;
+  private uploadedRequiredFile = false;
+
+  constructor(
+    private readonly applicant: Applicant,
+    private readonly images?: ImageBuffers,
+    private readonly forcePdf = false,
+  ) {
+    this.pasFotoId = applicant.pasFotoDriveId;
+    this.ktmId = applicant.fotoKtmDriveId;
+    this.paymentProofId = applicant.paymentProofDriveId;
+  }
+
+  async execute(): Promise<void> {
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    if (!folderId) throw new Error("GOOGLE_DRIVE_FOLDER_ID is not set");
+    const imagesFolderId =
+      process.env.GOOGLE_DRIVE_IMAGES_FOLDER_ID || folderId;
+
+    await this.syncRequiredImages(imagesFolderId);
+    this.assertRequiredImagesComplete();
+    await this.syncPdf(folderId);
+    await this.syncSheet();
+  }
+
+  private async syncRequiredImages(folderId: string) {
+    const ref = this.applicant.referenceNumber;
+
+    if (this.images?.pasFoto && !this.pasFotoId) {
+      this.pasFotoId = await uploadFile(
+        this.images.pasFoto,
+        `${ref} - pasfoto.jpg`,
+        "image/jpeg",
+        folderId,
+      );
+      await db
+        .update(applicants)
+        .set({ pasFotoDriveId: this.pasFotoId })
+        .where(eq(applicants.id, this.applicant.id));
+      this.uploadedRequiredFile = true;
+    }
+
+    if (this.images?.ktm && !this.ktmId) {
+      this.ktmId = await uploadFile(
+        this.images.ktm,
+        `${ref} - ktm.jpg`,
+        "image/jpeg",
+        folderId,
+      );
+      await db
+        .update(applicants)
+        .set({ fotoKtmDriveId: this.ktmId })
+        .where(eq(applicants.id, this.applicant.id));
+      this.uploadedRequiredFile = true;
+    }
+
+    if (this.images?.paymentProof && !this.paymentProofId) {
+      this.paymentProofId = await uploadFile(
+        this.images.paymentProof,
+        `${ref} - bukti-pembayaran.jpg`,
+        "image/jpeg",
+        folderId,
+      );
+      await db
+        .update(applicants)
+        .set({
+          paymentProofDriveId: this.paymentProofId,
+          paidAt: new Date(),
+        })
+        .where(eq(applicants.id, this.applicant.id));
+      this.uploadedRequiredFile = true;
+    }
+  }
+
+  private assertRequiredImagesComplete() {
+    const missingUploads = getMissingRequiredUploadLabels({
+      pasFotoDriveId: this.pasFotoId,
+      fotoKtmDriveId: this.ktmId,
+      paymentProofDriveId: this.paymentProofId,
+    });
+    if (missingUploads.length > 0) {
+      throw new Error(
+        `Dokumen wajib belum lengkap: ${missingUploads.join(", ")}.`,
+      );
+    }
+  }
+
+  private async syncPdf(folderId: string) {
+    if (!this.shouldSyncPdf()) return;
+
+    const pasFoto =
+      this.images?.pasFoto ??
+      (this.pasFotoId ? await downloadFile(this.pasFotoId) : undefined);
+    const ktm =
+      this.images?.ktm ??
+      (this.ktmId ? await downloadFile(this.ktmId) : undefined);
+    const paymentProof =
+      this.images?.paymentProof ??
+      (this.paymentProofId
+        ? await downloadFile(this.paymentProofId)
+        : undefined);
+
+    const pdf = await renderApplicantPdf(this.applicant, {
+      pasFoto: pasFoto ? toDataUri(pasFoto) : undefined,
+      ktm: ktm ? toDataUri(ktm) : undefined,
+      paymentProof: paymentProof ? toDataUri(paymentProof) : undefined,
+    });
+    let pdfId = this.applicant.pdfDriveId;
+    if (pdfId) {
+      await replaceFile(pdfId, pdf, "application/pdf");
+    } else {
+      pdfId = await uploadFile(
+        pdf,
+        `${this.applicant.referenceNumber}.pdf`,
+        "application/pdf",
+        folderId,
+      );
+    }
+
+    await db
+      .update(applicants)
+      .set({ pdfDriveId: pdfId, pdfGenerated: true, driveSynced: true })
+      .where(eq(applicants.id, this.applicant.id));
+  }
+
+  private shouldSyncPdf() {
+    return (
+      !this.applicant.driveSynced ||
+      !this.applicant.pdfGenerated ||
+      !this.applicant.pdfDriveId ||
+      this.uploadedRequiredFile ||
+      this.forcePdf
+    );
+  }
+
+  private async syncSheet() {
+    if (this.applicant.sheetSynced) return;
+
+    await appendApplicantRow(this.applicant);
+    await db
+      .update(applicants)
+      .set({ sheetSynced: true })
+      .where(eq(applicants.id, this.applicant.id));
+  }
+}
+
+export function syncApplicantToGoogle(
   applicant: Applicant,
   images?: ImageBuffers,
   forcePdf = false,
 ): Promise<void> {
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-  if (!folderId) throw new Error("GOOGLE_DRIVE_FOLDER_ID is not set");
-  // Photos (pas foto + KTM) go in their own folder; falls back to the form
-  // folder when unset so existing deployments keep working.
-  const imagesFolderId = process.env.GOOGLE_DRIVE_IMAGES_FOLDER_ID || folderId;
-
-  const ref = applicant.referenceNumber;
-  let pasFotoId = applicant.pasFotoDriveId;
-  let ktmId = applicant.fotoKtmDriveId;
-  let paymentProofId = applicant.paymentProofDriveId;
-  let uploadedRequiredFile = false;
-
-  // 1. Upload photos (only if we have fresh buffers and they're not uploaded).
-  if (images?.pasFoto && !pasFotoId) {
-    pasFotoId = await uploadFile(images.pasFoto, `${ref} - pasfoto.jpg`, "image/jpeg", imagesFolderId);
-    await db.update(applicants).set({ pasFotoDriveId: pasFotoId }).where(eq(applicants.id, applicant.id));
-    uploadedRequiredFile = true;
-  }
-  if (images?.ktm && !ktmId) {
-    ktmId = await uploadFile(images.ktm, `${ref} - ktm.jpg`, "image/jpeg", imagesFolderId);
-    await db.update(applicants).set({ fotoKtmDriveId: ktmId }).where(eq(applicants.id, applicant.id));
-    uploadedRequiredFile = true;
-  }
-  if (images?.paymentProof && !paymentProofId) {
-    paymentProofId = await uploadFile(
-      images.paymentProof,
-      `${ref} - bukti-pembayaran.jpg`,
-      "image/jpeg",
-      imagesFolderId,
-    );
-    await db
-      .update(applicants)
-      .set({ paymentProofDriveId: paymentProofId, paidAt: new Date() })
-      .where(eq(applicants.id, applicant.id));
-    uploadedRequiredFile = true;
-  }
-
-  const missingUploads = getMissingRequiredUploadLabels({
-    pasFotoDriveId: pasFotoId,
-    fotoKtmDriveId: ktmId,
-    paymentProofDriveId: paymentProofId,
-  });
-  if (missingUploads.length > 0) {
-    throw new Error(`Dokumen wajib belum lengkap: ${missingUploads.join(", ")}.`);
-  }
-
-  // 2. PDF -> Drive, with photos embedded. Use the fresh buffers if we have
-  //    them, otherwise pull the bytes back from Drive (the resync case).
-  if (
-    !applicant.driveSynced ||
-    !applicant.pdfGenerated ||
-    !applicant.pdfDriveId ||
-    uploadedRequiredFile ||
-    forcePdf
-  ) {
-    const pasFotoBuf = images?.pasFoto ?? (pasFotoId ? await downloadFile(pasFotoId) : undefined);
-    const ktmBuf = images?.ktm ?? (ktmId ? await downloadFile(ktmId) : undefined);
-    const paymentProofBuf =
-      images?.paymentProof ??
-      (paymentProofId ? await downloadFile(paymentProofId) : undefined);
-
-    const pdf = await renderApplicantPdf(applicant, {
-      pasFoto: pasFotoBuf ? toDataUri(pasFotoBuf) : undefined,
-      ktm: ktmBuf ? toDataUri(ktmBuf) : undefined,
-      paymentProof: paymentProofBuf ? toDataUri(paymentProofBuf) : undefined,
-    });
-    let pdfId = applicant.pdfDriveId;
-    if (pdfId) {
-      await replaceFile(pdfId, pdf, "application/pdf");
-    } else {
-      pdfId = await uploadFile(pdf, `${ref}.pdf`, "application/pdf", folderId);
-    }
-    await db
-      .update(applicants)
-      .set({ pdfDriveId: pdfId, pdfGenerated: true, driveSynced: true })
-      .where(eq(applicants.id, applicant.id));
-  }
-
-  // 3. Sheet append.
-  if (!applicant.sheetSynced) {
-    await appendApplicantRow(applicant);
-    await db.update(applicants).set({ sheetSynced: true }).where(eq(applicants.id, applicant.id));
-  }
+  return new ApplicantGoogleSyncService(applicant, images, forcePdf).execute();
 }
