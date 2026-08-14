@@ -1,5 +1,18 @@
 import type { Metadata } from "next";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
+  variable: "--font-fraunces",
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-plus-jakarta-sans",
+});
 
 export const metadata: Metadata = {
   title: "PAB MBUGM 2026",
@@ -13,15 +26,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className="h-full antialiased">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Plus+Jakarta+Sans:wght@300..800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html
+      lang="id"
+      className={`h-full antialiased ${fraunces.variable} ${plusJakartaSans.variable}`}
+    >
       <body className="min-h-full flex flex-col bg-paper text-ink font-body">
         {children}
       </body>

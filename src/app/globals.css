@@ -17,8 +17,8 @@
   --color-badge-ok: #57511F;
 
   /* Typography */
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-body: var(--font-plus-jakarta-sans), system-ui, sans-serif;
 }
 
 /* Drill-dot texture — radial dot grid referencing marching band field formations */
