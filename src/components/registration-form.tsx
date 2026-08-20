@@ -186,7 +186,7 @@ export function RegistrationForm({
         if (!active) return;
         if (draft) {
           if (draft.submissionToken) setSubmissionToken(draft.submissionToken);
-          setValues(draft.values);
+          setValues({ ...INITIAL, ...draft.values });
           const restoredStep = Math.max(0, Math.min(draft.currentStep, TOTAL_STEPS - 1));
           setCurrentStep(restoredStep);
           setFurthestStep(
@@ -213,9 +213,14 @@ export function RegistrationForm({
   }, []);
 
   useEffect(() => {
-    if (!draftReady || !hasDraft || status.state === "success") return;
+    if (!draftReady || status.state === "success") return;
 
     const timeout = window.setTimeout(() => {
+      if (!hasDraft) {
+        void draftStore.clear().catch(() => setDraftStatus("error"));
+        return;
+      }
+
       setDraftStatus("saving");
       void draftStore.saveMetadata({
         submissionToken,

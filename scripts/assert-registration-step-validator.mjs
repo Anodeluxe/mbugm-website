@@ -42,6 +42,25 @@ assert.match(
   validator({ values: { ...values, nim: "" } }).validate(0),
   /NIM.*wajib diisi/,
 );
+assert.match(
+  validator({ values: { ...values, nim: undefined } }).validate(0),
+  /NIM.*wajib diisi/,
+);
+assert.equal(
+  validator({
+    values: {
+      ...values,
+      tinggiBadanCm: undefined,
+      beratBadanKg: undefined,
+      noOrtu: undefined,
+    },
+  }).validate(0),
+  null,
+);
+assert.equal(
+  validator({ values: { ...values, noOrtu: undefined } }).validate(4),
+  null,
+);
 assert.equal(validator().validate(7), null);
 assert.match(validator({ pasFoto: null }).validate(7), /Pas foto.*wajib/);
 assert.match(

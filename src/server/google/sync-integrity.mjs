@@ -16,6 +16,14 @@ export function getMissingRequiredUploadLabels(state) {
 }
 
 /**
+ * @param {unknown[][] | null | undefined} rows
+ * @param {string} referenceNumber
+ */
+export function hasApplicantReference(rows, referenceNumber) {
+  return rows?.some((row) => row[0] === referenceNumber) ?? false;
+}
+
+/**
  * @param {{
  *   pasFotoDriveId?: string | null;
  *   fotoKtmDriveId?: string | null;

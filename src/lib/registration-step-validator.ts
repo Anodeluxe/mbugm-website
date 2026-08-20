@@ -102,7 +102,7 @@ export class RegistrationStepValidator {
 
   validate(step: number): string | null {
     const missingField = REQUIRED_PER_STEP[step]?.find(
-      (key) => !this.context.values[key].trim(),
+      (key) => !this.context.values[key]?.trim(),
     );
     if (missingField) {
       return `Kolom "${FIELD_LABELS[missingField] ?? missingField}" wajib diisi.`;
@@ -195,7 +195,7 @@ export class RegistrationStepValidator {
 
   private validateGuardianContact() {
     const { noOrtu } = this.context.values;
-    return noOrtu.trim() && !isValidPhone(noOrtu)
+    return noOrtu?.trim() && !isValidPhone(noOrtu)
       ? `Nomor telepon orang tua harus mengandung ${PHONE_MIN_DIGITS}-${PHONE_MAX_DIGITS} digit.`
       : null;
   }
@@ -214,8 +214,12 @@ export class RegistrationStepValidator {
       : null;
   }
 
-  private isOptionalIntegerInRange(value: string, min: number, max: number) {
-    if (!value.trim()) return true;
+  private isOptionalIntegerInRange(
+    value: string | undefined,
+    min: number,
+    max: number,
+  ) {
+    if (!value?.trim()) return true;
     const number = Number(value);
     return Number.isInteger(number) && number >= min && number <= max;
   }

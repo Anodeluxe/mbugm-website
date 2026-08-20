@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   getMissingRequiredUploadLabels,
+  hasApplicantReference,
   isApplicantDriveComplete,
 } from "../src/server/google/sync-integrity.mjs";
 
@@ -24,5 +25,10 @@ assert.equal(
 );
 assert.equal(isApplicantDriveComplete({ ...complete, pdfDriveId: null }), false);
 assert.equal(isApplicantDriveComplete({ ...complete, driveSynced: false }), false);
+assert.equal(
+  hasApplicantReference([["MBUGM-2026-AAAAA"], ["MBUGM-2026-BBBBB"]], "MBUGM-2026-BBBBB"),
+  true,
+);
+assert.equal(hasApplicantReference(undefined, "MBUGM-2026-BBBBB"), false);
 
 console.log("Sync integrity assertions passed.");

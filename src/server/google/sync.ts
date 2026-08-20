@@ -9,7 +9,7 @@ import { db } from "@/server/db";
 import { applicants, type Applicant } from "@/server/db/schema";
 import { renderApplicantPdf } from "@/server/pdf/render";
 import { uploadFile, replaceFile, downloadFile } from "./drive";
-import { appendApplicantRow } from "./sheets";
+import { ensureApplicantRow } from "./sheets";
 import { toDataUri } from "@/server/images";
 import { getMissingRequiredUploadLabels } from "./sync-integrity.mjs";
 
@@ -172,7 +172,7 @@ class ApplicantGoogleSyncService {
   private async syncSheet() {
     if (this.applicant.sheetSynced) return;
 
-    await appendApplicantRow(this.applicant);
+    await ensureApplicantRow(this.applicant);
     await db
       .update(applicants)
       .set({ sheetSynced: true })
