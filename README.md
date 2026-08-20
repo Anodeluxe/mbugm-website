@@ -14,6 +14,7 @@ pendaftar, PDF rangkuman, Google Drive, dan Google Sheets.
 | Dokumen | Google Drive |
 | Rekap | Google Sheets |
 | CAPTCHA | Cloudflare Turnstile |
+| Email konfirmasi | Resend |
 
 Aturan bisnis utama dicatat di [PRODUCT.md](./PRODUCT.md).
 
@@ -25,6 +26,7 @@ Aturan bisnis utama dicatat di [PRODUCT.md](./PRODUCT.md).
 - Google Cloud service account
 - Google OAuth client
 - Cloudflare Turnstile
+- Akun Resend dengan domain `mbugm.org` terverifikasi
 
 ## Menjalankan secara lokal
 
@@ -68,11 +70,28 @@ Jangan commit `.env`, `.env.local`, private key, atau kredensial lain.
 | `GOOGLE_SHEET_ID` | Ya | ID spreadsheet rekap |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Ya | Site key yang boleh dikirim ke browser |
 | `TURNSTILE_SECRET_KEY` | Ya | Secret key yang hanya tersedia di server |
+| `RESEND_API_KEY` | Ya | API key Resend untuk mengirim email konfirmasi |
+| `REGISTRATION_EMAIL_REPLY_TO` | Tidak | Alamat tujuan ketika penerima membalas email |
 | `LOCAL_FORM_MOCK` | Tidak | Isi `1` hanya untuk mock form saat development |
 
 Untuk Vercel, masukkan nilai production melalui Project Settings, bukan melalui
 file di repository. Perubahan environment variable baru berlaku pada deployment
 berikutnya.
+
+## Email konfirmasi
+
+Email dikirim dari `PAB MB UGM <noreply@mbugm.org>` setelah database, Drive,
+PDF, dan Sheets selesai. Mailbox `noreply@mbugm.org` tidak diperlukan.
+
+1. Tambahkan `mbugm.org` ke Resend.
+2. Salin record SPF dan DKIM dari Resend ke pengelola DNS aktif domain.
+3. Setelah domain terverifikasi, buat API key dengan akses pengiriman.
+4. Isi `RESEND_API_KEY` di environment Vercel.
+5. Jika balasan perlu masuk ke panitia, isi `REGISTRATION_EMAIL_REPLY_TO`.
+
+Sapaan email mengambil kata pertama dari `Nama Lengkap`. Pengiriman ulang aman:
+Resend memakai idempotency key dan database menyimpan waktu email berhasil
+dikirim.
 
 ## Google OAuth
 
@@ -113,6 +132,7 @@ Migration penting:
 
 - `0003_seed_placement_sessions.sql` mengisi 14 sesi placement test.
 - `0004_enforce_session_quota.sql` memasang pengaman atomik kapasitas sesi.
+- `0005_brown_nemesis.sql` menambah status pengiriman email konfirmasi.
 
 Sebelum migration production:
 
@@ -167,7 +187,8 @@ Smoke test setelah deployment:
 4. `/admin` tanpa sesi diarahkan ke `/login`.
 5. Endpoint PDF tanpa sesi mengembalikan `401`.
 6. Pendaftaran uji menghasilkan row database, tiga gambar, PDF, dan row Sheet.
-7. Hapus data uji setelah seluruh alur terverifikasi.
+7. Email konfirmasi diterima dan sapaan memakai kata pertama nama lengkap.
+8. Hapus data uji setelah seluruh alur terverifikasi.
 
 ## Rollback
 

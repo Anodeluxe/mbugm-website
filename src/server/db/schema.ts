@@ -112,6 +112,9 @@ export const applicants = pgTable(
     // Contact
     noTelp: text("no_telp"),
     email: text("email"), // indexed for soft de-dup, not unique
+    confirmationEmailSentAt: timestamp("confirmation_email_sent_at", {
+      withTimezone: true,
+    }),
     alamatAsal: text("alamat_asal"),
     alamatJogja: text("alamat_jogja"),
     jenisTempat: housingTypeEnum("jenis_tempat"),

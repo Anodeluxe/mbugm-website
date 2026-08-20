@@ -4,6 +4,7 @@ import { applicants, sessions, type Applicant } from "@/server/db/schema";
 import { applicantSchema } from "@/server/validation/applicant";
 import { verifyTurnstileToken } from "@/server/turnstile";
 import { syncApplicantToGoogle } from "@/server/google/sync";
+import { sendRegistrationConfirmationEmail } from "@/server/email/registration-confirmation";
 import { processImage } from "@/server/images";
 import { config, isRegistrationOpen } from "@/lib/config";
 import {
@@ -251,11 +252,6 @@ export class ApplicationSubmissionService {
   ): Promise<SubmitResult> {
     try {
       await syncApplicantToGoogle(applicant, images);
-      return {
-        ok: true,
-        referenceNumber: applicant.referenceNumber,
-        ...(duplicate ? { duplicate: true } : {}),
-      };
     } catch (error) {
       console.error("Google sync failed for", applicant.referenceNumber, error);
       return {
@@ -264,5 +260,32 @@ export class ApplicationSubmissionService {
           "Data utama sudah tersimpan, tetapi sinkronisasi belum selesai. Jangan tutup halaman. Selesaikan verifikasi CAPTCHA lalu kirim lagi.",
       };
     }
+
+    try {
+      if (!applicant.confirmationEmailSentAt) {
+        await sendRegistrationConfirmationEmail(applicant);
+        await db
+          .update(applicants)
+          .set({ confirmationEmailSentAt: new Date() })
+          .where(eq(applicants.id, applicant.id));
+      }
+    } catch (error) {
+      console.error(
+        "Confirmation email failed for",
+        applicant.referenceNumber,
+        error,
+      );
+      return {
+        ok: false,
+        error:
+          "Data dan sinkronisasi sudah selesai, tetapi email konfirmasi belum terkirim. Jangan tutup halaman. Selesaikan verifikasi CAPTCHA lalu kirim lagi.",
+      };
+    }
+
+    return {
+      ok: true,
+      referenceNumber: applicant.referenceNumber,
+      ...(duplicate ? { duplicate: true } : {}),
+    };
   }
 }
