@@ -70,11 +70,13 @@ Pengguna hanya menerima status berhasil setelah:
 1. data utama tersimpan di database;
 2. tiga dokumen wajib tersimpan di Google Drive;
 3. PDF rangkuman tersimpan di Google Drive;
-4. data masuk ke Google Sheets.
+4. data masuk ke Google Sheets;
+5. email konfirmasi terkirim ke alamat email pendaftar.
 
 Jika sinkronisasi belum lengkap, pengguna diminta mengirim ulang dengan
 submission token yang sama. Proses ulang hanya melanjutkan bagian yang belum
-selesai.
+selesai. Email konfirmasi memakai idempotency key dan penanda database agar
+pengiriman ulang tidak menghasilkan email ganda.
 
 ### Placement test
 

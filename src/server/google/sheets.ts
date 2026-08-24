@@ -3,9 +3,12 @@
 import { getSheets } from "./client";
 import type { Applicant } from "@/server/db/schema";
 import { getPlacementSessionLabel } from "@/server/placement-session";
+import { hasApplicantReference } from "./sync-integrity.mjs";
 
 // The tab name in your spreadsheet. Change this if your first tab isn't "Sheet1".
 const SHEET_TAB = "Sheet1";
+// ponytail: per-runtime lock; use a DB outbox if cross-instance duplicates appear.
+const pendingRows = new Map<string, Promise<void>>();
 
 // Paste this as row 1 of your sheet so the columns line up with the rows below.
 export const SHEET_HEADERS = [
@@ -34,8 +37,32 @@ export const SHEET_HEADERS = [
   "Sesi Penempatan",
 ];
 
-export async function appendApplicantRow(a: Applicant): Promise<void> {
+export function ensureApplicantRow(a: Applicant): Promise<void> {
+  const pending = pendingRows.get(a.referenceNumber);
+  if (pending) return pending;
+
+  const operation = ensureApplicantRowOnce(a).finally(() => {
+    pendingRows.delete(a.referenceNumber);
+  });
+  pendingRows.set(a.referenceNumber, operation);
+  return operation;
+}
+
+async function ensureApplicantRowOnce(a: Applicant): Promise<void> {
   const sheets = getSheets();
+  const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+  if (!spreadsheetId) throw new Error("GOOGLE_SHEET_ID is not set");
+
+  const existingReferences = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${SHEET_TAB}!B2:B`,
+  });
+  if (
+    hasApplicantReference(existingReferences.data.values, a.referenceNumber)
+  ) {
+    return;
+  }
+
   const placementSession = await getPlacementSessionLabel(a.sessionId);
   const row = [
     a.createdAt ? a.createdAt.toISOString() : "",
@@ -64,7 +91,7 @@ export async function appendApplicantRow(a: Applicant): Promise<void> {
   ];
 
   await sheets.spreadsheets.values.append({
-    spreadsheetId: process.env.GOOGLE_SHEET_ID!,
+    spreadsheetId,
     range: `${SHEET_TAB}!A1`,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",

@@ -8,16 +8,12 @@
 // (with the bulk actions moved into a sticky bottom bar so they stay reachable).
 
 import Link from "next/link";
-import { and, or, ilike, desc, count, eq } from "drizzle-orm";
-import { db } from "@/server/db";
-import { applicants, sessions } from "@/server/db/schema";
 import { config } from "@/lib/config";
-import { PDF_BATCH_SIZE, getPdfBatchRange } from "@/lib/pdf-batch";
 import { getPlacementSessionTime } from "@/lib/placement-sessions";
 import { ResyncButton } from "@/components/resync-button";
 import { ResyncAllButton } from "@/components/resync-all-button";
-import { applicantNeedsGoogleSync } from "@/server/google/sync";
 import { isApplicantDriveComplete } from "@/server/google/sync-integrity.mjs";
+import { ApplicantAdminQuery } from "@/server/application/applicant-admin-query";
 
 export const dynamic = "force-dynamic";
 
@@ -60,59 +56,8 @@ export default async function AdminHome({
   searchParams: Promise<{ q?: string; filter?: string }>;
 }) {
   const { q, filter } = await searchParams;
-
-  const unsynced = applicantNeedsGoogleSync();
-
-  // Total unsynced (across everyone, not just the filtered view) for the bulk button.
-  const [{ value: unsyncedCount }] = await db
-    .select({ value: count() })
-    .from(applicants)
-    .where(unsynced);
-
-  // Grand total, for the count pill beside the heading.
-  const [{ value: total }] = await db.select({ value: count() }).from(applicants);
-
-  // Build the list query from the URL params.
-  const conditions = [];
-  if (q && q.trim()) {
-    const like = `%${q.trim()}%`;
-    conditions.push(
-      or(
-        ilike(applicants.namaLengkap, like),
-        ilike(applicants.nim, like),
-        ilike(applicants.referenceNumber, like),
-        ilike(applicants.email, like),
-      ),
-    );
-  }
-  if (filter === "unsynced") conditions.push(unsynced);
-  const where = conditions.length ? and(...conditions) : undefined;
-  const matchingTotal = where
-    ? (await db.select({ value: count() }).from(applicants).where(where))[0].value
-    : total;
-
-  const rows = await db
-    .select({
-      applicant: applicants,
-      placementSession: {
-        dayLabel: sessions.dayLabel,
-        sessionNo: sessions.sessionNo,
-      },
-    })
-    .from(applicants)
-    .leftJoin(sessions, eq(applicants.sessionId, sessions.id))
-    .where(where)
-    .orderBy(desc(applicants.createdAt))
-    .limit(1000);
-
-  // Split large exports into predictable ranges that fit one server request.
-  const pdfBatches = Array.from(
-    { length: Math.ceil(matchingTotal / PDF_BATCH_SIZE) },
-    (_, index) => {
-      const page = index + 1;
-      return { page, ...getPdfBatchRange(page, matchingTotal) };
-    },
-  );
+  const { total, unsyncedCount, rows, pdfBatches } =
+    await new ApplicantAdminQuery({ q, filter }).execute();
 
   // The mobile filter chips are plain links onto the same ?filter= param.
   const chipHref = (next?: "unsynced") => {

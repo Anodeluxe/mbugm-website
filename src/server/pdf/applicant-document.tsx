@@ -138,7 +138,10 @@ function ImageSlot({
   style: Style;
   label: string;
 }) {
-  if (src) return <Image src={src} style={style} />;
+  if (src) {
+    // eslint-disable-next-line jsx-a11y/alt-text -- React PDF Image has no alt prop.
+    return <Image src={src} style={style} />;
+  }
   return (
     <View style={[style, styles.imgPlaceholder]}>
       <Text style={{ fontSize: 7, color: C.label }}>{label}</Text>
