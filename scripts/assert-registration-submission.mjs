@@ -28,6 +28,23 @@ assert.equal(confirmation.subject, "Bukti Registrasi PAB MB UGM 2026");
 assert.match(confirmation.text, /^Halo, Dimas!/);
 assert.match(confirmation.html, /Halo, Dimas!/);
 assert.match(confirmation.html, /posterpabmbugm-2026/);
+assert.match(
+  confirmation.html,
+  /<strong>\[PAB MARCHING BAND UGM 2026\]<\/strong>/,
+);
+assert.match(
+  confirmation.html,
+  /<strong>\(Nama, Prodi, Fakultas, Angkatan\)<\/strong>/,
+);
+assert.match(
+  confirmation.html,
+  /<strong>Marching Band UGM Rotasi XLV<\/strong>/,
+);
+assert.match(
+  confirmation.html,
+  /<strong>https:\/\/mbugm\.org<\/strong>/,
+);
+assert.doesNotMatch(confirmation.text, /<strong>/);
 
 const escapedConfirmation = buildRegistrationConfirmationEmail(
   "<Dimas> Pratama",

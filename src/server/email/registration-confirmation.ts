@@ -60,6 +60,20 @@ YouTube: MBUGMofficial
 #MBUGM
 #VivaMBUGM
 #UGMYogyakarta`;
+  const captionHtml = escapeHtml(caption)
+    .replace(
+      "[PAB MARCHING BAND UGM 2026]",
+      "<strong>[PAB MARCHING BAND UGM 2026]</strong>",
+    )
+    .replace(
+      "(Nama, Prodi, Fakultas, Angkatan)",
+      "<strong>(Nama, Prodi, Fakultas, Angkatan)</strong>",
+    )
+    .replace(
+      "Marching Band UGM Rotasi XLV",
+      "<strong>Marching Band UGM Rotasi XLV</strong>",
+    )
+    .replace("https://mbugm.org", "<strong>https://mbugm.org</strong>");
 
   const text = `Halo, ${greetingName}!
 
@@ -115,7 +129,7 @@ ${caption}`;
         </ol>
         <p>Terus semangat dan selamat memulai perjalanan baru bersama PAB Marching Band UGM 2026! 🎶</p>
         <p>Gunakan caption berikut untuk dilampirkan pada feed Instagram.</p>
-        <div style="white-space:pre-wrap;background:#f4f4f0;border-left:4px solid #225f36;border-radius:8px;padding:20px">${escapeHtml(caption)}</div>
+        <div style="white-space:pre-wrap;background:#f4f4f0;border-left:4px solid #225f36;border-radius:8px;padding:20px">${captionHtml}</div>
       </section>
     </main>
   </body>
