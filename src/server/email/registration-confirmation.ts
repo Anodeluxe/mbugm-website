@@ -88,7 +88,7 @@ Jangan lupa juga untuk:
 4. Sertakan caption sesuai petunjuk yang diberikan.
 
 Berikut link poster PAB MB UGM 2026:
-https://acesse.one/posterpabmbugm-2026
+https://bit.ly/4yaXSZL
 
 Berikut link dan langkah-langkah pemakaian twibon:
 https://canva.link/n9g2zptqglpz2vv
@@ -119,7 +119,7 @@ ${caption}`;
           <li>Tag akun Instagram: <strong>@pabmbugm</strong> dan <strong>@mbugm</strong>.</li>
           <li>Sertakan caption sesuai petunjuk yang diberikan.</li>
         </ol>
-        <p><strong>Poster PAB MB UGM 2026</strong><br><a href="https://acesse.one/posterpabmbugm-2026" style="color:#225f36">https://acesse.one/posterpabmbugm-2026</a></p>
+        <p><strong>Poster PAB MB UGM 2026</strong><br><a href="https://bit.ly/4yaXSZL" style="color:#225f36">https://acesse.one/posterpabmbugm-2026</a></p>
         <p style="margin-bottom:8px"><strong>Twibbon dan langkah pemakaian</strong><br><a href="https://canva.link/n9g2zptqglpz2vv" style="color:#225f36">https://canva.link/n9g2zptqglpz2vv</a></p>
         <ol style="padding-left:22px">
           <li>Buka link twibbon yang disediakan.</li>
