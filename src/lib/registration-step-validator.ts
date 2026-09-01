@@ -12,6 +12,7 @@ import {
   isValidPhone,
   isValidTraits,
 } from "./applicant-rules";
+import { getPlacementSessionUnavailableReason } from "./placement-sessions";
 
 export type PlacementSessionOption = {
   id: number;
@@ -47,6 +48,7 @@ type ValidationContext = {
   pasFoto: UploadCandidate | null;
   ktm: UploadCandidate | null;
   paymentProof: UploadCandidate | null;
+  now?: Date;
 };
 
 const REQUIRED_PER_STEP: Partial<
@@ -209,6 +211,11 @@ export class RegistrationStepValidator {
       (session) => String(session.id) === values.sessionId,
     );
     if (!selected) return "Pilih sesi penempatan yang tersedia.";
+    const unavailableReason = getPlacementSessionUnavailableReason(
+      selected.dayLabel,
+      this.context.now,
+    );
+    if (unavailableReason) return unavailableReason;
     return selected.bookedCount >= selected.quota
       ? "Sesi yang dipilih sudah penuh. Silakan pilih sesi lain."
       : null;

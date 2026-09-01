@@ -21,7 +21,7 @@ const values = {
 const image = { size: 100, type: "image/jpeg" };
 const session = {
   id: 1,
-  dayLabel: "Senin",
+  dayLabel: "Minggu, 13 September 2026",
   sessionNo: 1,
   quota: 40,
   bookedCount: 0,
@@ -34,6 +34,7 @@ const validator = (overrides = {}) =>
     pasFoto: image,
     ktm: image,
     paymentProof: image,
+    now: new Date("2026-09-01T12:00:00+07:00"),
     ...overrides,
   });
 
@@ -66,6 +67,12 @@ assert.match(validator({ pasFoto: null }).validate(7), /Pas foto.*wajib/);
 assert.match(
   validator({ sessions: [{ ...session, bookedCount: 40 }] }).validate(9),
   /sudah penuh/,
+);
+assert.match(
+  validator({
+    sessions: [{ ...session, dayLabel: "Sabtu, 12 September 2026" }],
+  }).validate(9),
+  /perpanjangan/,
 );
 
 console.log("Registration step validator checks passed.");

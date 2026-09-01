@@ -31,6 +31,7 @@ import {
 import { config, formatRupiah } from "@/lib/config";
 import {
   getPlacementSessionTime,
+  getPlacementSessionUnavailableReason,
   groupPlacementSessions,
 } from "@/lib/placement-sessions";
 import type { PlacementSessionOption } from "@/lib/registration-step-validator";
@@ -491,6 +492,9 @@ function PlacementAndVerificationStep({
                     {day.sessions.map((session) => {
                       const selected = values.sessionId === String(session.id);
                       const full = session.bookedCount >= session.quota;
+                      const unavailableReason =
+                        getPlacementSessionUnavailableReason(day.dayLabel);
+                      const disabled = full || Boolean(unavailableReason);
 
                       return (
                         <button
@@ -498,7 +502,7 @@ function PlacementAndVerificationStep({
                           type="button"
                           role="radio"
                           aria-checked={selected}
-                          disabled={full}
+                          disabled={disabled}
                           onClick={() => update("sessionId", String(session.id))}
                           className={`min-h-24 rounded-lg px-4 py-3.5 text-left font-body transition-[background-color,box-shadow,transform] duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100 ${
                             selected
@@ -528,8 +532,8 @@ function PlacementAndVerificationStep({
                               </svg>
                             </span>
                           </span>
-                          <span className={`mt-3 block text-xs font-semibold tabular-nums ${full ? "text-crimson" : "text-warm-gray"}`}>
-                            {session.bookedCount}/{session.quota} peserta{full ? ", penuh" : ""}
+                          <span className={`mt-3 block text-xs font-semibold tabular-nums ${disabled ? "text-crimson" : "text-warm-gray"}`}>
+                            {unavailableReason ?? `${session.bookedCount}/${session.quota} peserta${full ? ", penuh" : ""}`}
                           </span>
                         </button>
                       );

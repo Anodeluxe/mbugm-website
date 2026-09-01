@@ -11,6 +11,7 @@ import {
   ACCEPTED_IMAGE_TYPES,
   MAX_UPLOAD_BYTES,
 } from "@/lib/applicant-rules";
+import { getPlacementSessionUnavailableReason } from "@/lib/placement-sessions";
 
 const MIN_FILL_SECONDS = 3;
 
@@ -128,6 +129,12 @@ export class ApplicationSubmissionService {
         ok: false,
         error: "Sesi penempatan tidak ditemukan. Silakan pilih sesi lain.",
       };
+    }
+    const unavailableReason = getPlacementSessionUnavailableReason(
+      selectedSession.dayLabel,
+    );
+    if (unavailableReason) {
+      return { ok: false, error: unavailableReason };
     }
 
     let inserted;
