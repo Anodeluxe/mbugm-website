@@ -36,6 +36,7 @@ function todayInJakarta(now: Date) {
 
 export function getPlacementSessionUnavailableReason(
   dayLabel: string,
+  sessionNo: number,
   now: Date = new Date(),
 ) {
   const date = placementDateValue(dayLabel);
@@ -43,6 +44,13 @@ export function getPlacementSessionUnavailableReason(
   if (date <= todayInJakarta(now)) return "Tanggal ini sudah tidak tersedia.";
   if ((config.unavailablePlacementDates as readonly string[]).includes(date)) {
     return "Tanggal ini tidak tersedia selama perpanjangan pendaftaran.";
+  }
+  if (
+    (config.unavailablePlacementSessions as readonly string[]).includes(
+      `${date}/${sessionNo}`,
+    )
+  ) {
+    return "Sesi ini tidak tersedia.";
   }
   return null;
 }

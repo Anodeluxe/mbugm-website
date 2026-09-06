@@ -22,7 +22,7 @@ const image = { size: 100, type: "image/jpeg" };
 const session = {
   id: 1,
   dayLabel: "Minggu, 13 September 2026",
-  sessionNo: 1,
+  sessionNo: 2,
   quota: 40,
   bookedCount: 0,
 };
