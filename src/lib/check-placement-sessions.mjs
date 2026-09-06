@@ -22,6 +22,7 @@ const septemberFirst = new Date("2026-09-01T00:00:00+07:00");
 assert.match(
   getPlacementSessionUnavailableReason(
     "Selasa, 1 September 2026",
+    1,
     septemberFirst,
   ),
   /sudah tidak tersedia/,
@@ -29,6 +30,7 @@ assert.match(
 assert.equal(
   getPlacementSessionUnavailableReason(
     "Senin, 7 September 2026",
+    2,
     septemberFirst,
   ),
   null,
@@ -36,6 +38,7 @@ assert.equal(
 assert.match(
   getPlacementSessionUnavailableReason(
     "Sabtu, 12 September 2026",
+    1,
     septemberFirst,
   ),
   /perpanjangan/,
@@ -43,9 +46,34 @@ assert.match(
 assert.match(
   getPlacementSessionUnavailableReason(
     "Senin, 31 Agustus 2026",
+    1,
     new Date("2026-09-02T12:00:00+07:00"),
   ),
   /sudah tidak tersedia/,
+);
+assert.match(
+  getPlacementSessionUnavailableReason(
+    "Senin, 7 September 2026",
+    1,
+    septemberFirst,
+  ),
+  /Sesi ini tidak tersedia/,
+);
+assert.match(
+  getPlacementSessionUnavailableReason(
+    "Minggu, 13 September 2026",
+    1,
+    septemberFirst,
+  ),
+  /Sesi ini tidak tersedia/,
+);
+assert.equal(
+  getPlacementSessionUnavailableReason(
+    "Minggu, 13 September 2026",
+    2,
+    septemberFirst,
+  ),
+  null,
 );
 
 const groups = groupPlacementSessions([

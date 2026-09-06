@@ -493,7 +493,10 @@ function PlacementAndVerificationStep({
                       const selected = values.sessionId === String(session.id);
                       const full = session.bookedCount >= session.quota;
                       const unavailableReason =
-                        getPlacementSessionUnavailableReason(day.dayLabel);
+                        getPlacementSessionUnavailableReason(
+                          day.dayLabel,
+                          session.sessionNo,
+                        );
                       const disabled = full || Boolean(unavailableReason);
 
                       return (

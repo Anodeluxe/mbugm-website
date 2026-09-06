@@ -213,6 +213,7 @@ export class RegistrationStepValidator {
     if (!selected) return "Pilih sesi penempatan yang tersedia.";
     const unavailableReason = getPlacementSessionUnavailableReason(
       selected.dayLabel,
+      selected.sessionNo,
       this.context.now,
     );
     if (unavailableReason) return unavailableReason;

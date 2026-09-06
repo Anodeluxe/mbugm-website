@@ -132,6 +132,7 @@ export class ApplicationSubmissionService {
     }
     const unavailableReason = getPlacementSessionUnavailableReason(
       selectedSession.dayLabel,
+      selectedSession.sessionNo,
     );
     if (unavailableReason) {
       return { ok: false, error: unavailableReason };
