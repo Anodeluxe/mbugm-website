@@ -67,6 +67,14 @@ assert.match(
   ),
   /Sesi ini tidak tersedia/,
 );
+assert.match(
+  getPlacementSessionUnavailableReason(
+    "Kamis, 10 September 2026",
+    1,
+    septemberFirst,
+  ),
+  /Sesi ini tidak tersedia/,
+);
 assert.equal(
   getPlacementSessionUnavailableReason(
     "Minggu, 13 September 2026",
