@@ -23,7 +23,11 @@ export const config = {
 
   // Placement dates unavailable during the extended registration period.
   unavailablePlacementDates: ["2026-09-12"],
-  unavailablePlacementSessions: ["2026-09-07/1", "2026-09-13/1"],
+  unavailablePlacementSessions: [
+    "2026-09-07/1",
+    "2026-09-10/1",
+    "2026-09-13/1",
+  ],
 } as const;
 
 export function formatRupiah(value: number): string {
