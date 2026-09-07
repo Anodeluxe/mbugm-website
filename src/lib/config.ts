@@ -25,6 +25,7 @@ export const config = {
   unavailablePlacementDates: ["2026-09-12"],
   unavailablePlacementSessions: [
     "2026-09-07/1",
+    "2026-09-08/1",
     "2026-09-10/1",
     "2026-09-13/1",
   ],
