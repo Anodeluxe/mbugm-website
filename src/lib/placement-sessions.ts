@@ -41,13 +41,21 @@ export function getPlacementSessionUnavailableReason(
 ) {
   const date = placementDateValue(dayLabel);
   if (!date) return "Tanggal sesi tidak valid.";
+  const sessionKey = `${date}/${sessionNo}`;
+  if (
+    (config.documentationOpenPlacementSessions as readonly string[]).includes(
+      sessionKey,
+    )
+  ) {
+    return null;
+  }
   if (date <= todayInJakarta(now)) return "Tanggal ini sudah tidak tersedia.";
   if ((config.unavailablePlacementDates as readonly string[]).includes(date)) {
     return "Tanggal ini tidak tersedia selama perpanjangan pendaftaran.";
   }
   if (
     (config.unavailablePlacementSessions as readonly string[]).includes(
-      `${date}/${sessionNo}`,
+      sessionKey,
     )
   ) {
     return "Sesi ini tidak tersedia.";

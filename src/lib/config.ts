@@ -29,6 +29,10 @@ export const config = {
     "2026-09-10/1",
     "2026-09-13/1",
   ],
+
+  // Temporary override to keep specific sessions open for remote documentation.
+  // Clear to [] when closing documentation mode.
+  documentationOpenPlacementSessions: ["2026-09-13/2"],
 } as const;
 
 export function formatRupiah(value: number): string {

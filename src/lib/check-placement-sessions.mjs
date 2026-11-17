@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { config } from "./config.ts";
 import {
   formatPlacementSession,
   getPlacementSessionUnavailableReason,
@@ -83,6 +84,37 @@ assert.equal(
   ),
   null,
 );
+
+const novemberDocCheck = new Date("2026-11-17T13:00:00+07:00");
+assert.match(
+  getPlacementSessionUnavailableReason(
+    "Minggu, 13 September 2026",
+    1,
+    novemberDocCheck,
+  ),
+  /sudah tidak tersedia/,
+);
+if (
+  config.documentationOpenPlacementSessions.includes("2026-09-13/2")
+) {
+  assert.equal(
+    getPlacementSessionUnavailableReason(
+      "Minggu, 13 September 2026",
+      2,
+      novemberDocCheck,
+    ),
+    null,
+  );
+} else {
+  assert.match(
+    getPlacementSessionUnavailableReason(
+      "Minggu, 13 September 2026",
+      2,
+      novemberDocCheck,
+    ),
+    /sudah tidak tersedia/,
+  );
+}
 
 const groups = groupPlacementSessions([
   { dayLabel: "Senin", sessionNo: 1 },
