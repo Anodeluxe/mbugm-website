@@ -19,7 +19,7 @@ export const config = {
   // Registration window, in Jogja time (WIB, +07:00). Outside this window the
   // form is closed automatically. To open/close manually, just move the dates.
   opensAt: "2026-08-03T00:00:00+07:00",
-  closesAt: "2027-09-11T23:59:59+07:00",
+  closesAt: "2026-09-11T23:59:59+07:00",
 
   // Placement dates unavailable during the extended registration period.
   unavailablePlacementDates: ["2026-09-12"],
